@@ -262,7 +262,9 @@ Category: ${topic.category}
 OUTLINE:
 ${outline}
 
-Requirements:
+CRITICAL REQUIREMENTS:
+- Output ONLY pure HTML (no markdown code fences like \`\`\`html)
+- Use UK English spelling and grammar throughout (colour, organise, realise, etc.)
 - Expand each outline section into 2-3 paragraphs
 - Write 1500-2000 words total
 - Include practical examples and tips
