@@ -276,6 +276,12 @@ CRITICAL REQUIREMENTS:
 - DO NOT explain what the post does
 - End the post after the last content section
 
+STRUCTURED DATA (use ONLY when relevant):
+- Use <ul> or <ol> lists when presenting multiple options, steps, or items
+- Use <table> with <thead>, <tbody>, <tr>, <td> ONLY when comparing features, prices, or data
+- Use <strong> and <em> for emphasis on key terms
+- Avoid forcing tables or lists where prose is more natural
+
 SEO Enhancements:
 1. Use long-tail keyword questions in H3 headings (e.g., "What are the best spring 2026 casual fashion trends?")
 2. Naturally incorporate keyword variations (2-3 times total, not forced)
@@ -283,6 +289,7 @@ SEO Enhancements:
 4. Include 2-3 relevant outbound links to authoritative sources (fashion blogs, Wikipedia, major retailers) with natural anchor text
 5. Include internal link suggestions as a simple list before the FAQ section
 6. Add JSON-LD schema markup at the very end for BlogPosting
+7. When using lists or tables, add schema markup for them (use proper HTML structure for accessibility)
 
 Schema Markup Format:
 <script type="application/ld+json">
@@ -483,6 +490,48 @@ async function addBlogPostToAirtable(topic, article, seoMeta, image) {
   }
 }
 
+// Add post to Publishing Schedule table
+async function addToPublishingSchedule(topic, wpPostId, wpPostUrl) {
+  console.log(`📅 Logging to Publishing Schedule...`);
+
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
+  const data = {
+    fields: {
+      'Publication Date': today,
+      'Post Title': topic.title,
+      'Status': 'Published',
+      'WordPress Post ID': wpPostId,
+      'Published URL': wpPostUrl,
+      'Notes': 'Auto-published by automation',
+    },
+  };
+
+  try {
+    const response = await makeRequest(
+      'api.airtable.com',
+      `/v0/${CONFIG.airtable.baseId}/Publishing%20Schedule`,
+      'POST',
+      {
+        'Authorization': `Bearer ${CONFIG.airtable.token}`,
+        'Content-Type': 'application/json',
+      },
+      data
+    );
+
+    if (response.status === 201 || response.status === 200) {
+      console.log('✅ Added to Publishing Schedule\n');
+      return true;
+    } else {
+      console.error('❌ Error adding to Publishing Schedule:', response.status, response.body.error);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Error logging to Publishing Schedule:', error.message);
+    return false;
+  }
+}
+
 // Publish to WordPress
 async function publishToWordPress(topic, article, seoMeta, image) {
   console.log(`📤 Publishing to WordPress: ${topic.title}`);
@@ -549,6 +598,10 @@ async function publishToWordPress(topic, article, seoMeta, image) {
       const wpPostUrl = response.body.link;
       console.log(`✅ Published to WordPress (ID: ${wpPostId})`);
       console.log(`📌 URL: ${wpPostUrl}\n`);
+      
+      // Log to Publishing Schedule
+      await addToPublishingSchedule(topic, wpPostId, wpPostUrl);
+      
       return { wpPostId, wpPostUrl };
     } else {
       console.error('❌ WordPress error:', response.status, response.body);
