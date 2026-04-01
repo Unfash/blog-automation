@@ -89,28 +89,54 @@ function makeRequest(hostname, path, method = 'GET', headers = {}, data = null) 
 async function discoverTrendingTopics() {
   console.log('📊 Discovering trending topics...');
   
+  // Actual subcategories from existing posts
+  const categories = [
+    'Casual Style',
+    'Seasonal Wardrobe',
+    'Clothing',
+    'Smart Casual',
+    'Accessories',
+    'Travel',
+    'Hats & Caps',
+    'Style Mistakes',
+    'Featured',
+    'Grooming',
+    'Beard & Shaving',
+    'Hair Care & Styles',
+    'Capsule Wardrobe',
+    'Bags',
+    'Watches',
+    'Skincare',
+    'Footwear',
+    'Glasses & Sunglasses',
+    'Formalwear',
+    'Fragrance',
+    'Activites',
+    'Life',
+  ];
+
   const trendingTopics = [
     {
       title: 'Best Spring 2026 Casual Fashion Trends',
-      category: 'Clothing',
+      category: 'Casual Style',
       keyword: 'spring fashion trends 2026',
       searchVolume: 8900,
     },
     {
       title: 'How to Care for Leather Shoes in Summer',
-      category: 'Accessories',
+      category: 'Footwear',
       keyword: 'leather shoe care summer',
       searchVolume: 3200,
     },
     {
       title: 'Beard Growth and Maintenance Guide',
-      category: 'Grooming',
+      category: 'Beard & Shaving',
       keyword: 'how to grow beard faster',
       searchVolume: 12000,
     },
     {
       title: 'Budget Travel Hacks for Men 2026',
-      category: 'Lifestyle',
+      category: 'Travel',
       keyword: 'cheap travel tips men',
       searchVolume: 5600,
     },
