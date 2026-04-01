@@ -19,18 +19,21 @@ const CONFIG = {
   },
 };
 
-// Utility function to make HTTPS requests
+// Utility function to make HTTPS requests with explicit port 443
 function makeRequest(hostname, path, method = 'GET', headers = {}, data = null) {
   return new Promise((resolve, reject) => {
     const options = {
-      hostname,
-      path,
-      method,
+      hostname: hostname,
+      port: 443,
+      path: path,
+      method: method,
       headers: {
         'Content-Type': 'application/json',
         ...headers,
       },
     };
+
+    console.log(`[DEBUG] Making ${method} request to ${hostname}${path}`);
 
     const req = https.request(options, (res) => {
       let body = '';
@@ -45,8 +48,14 @@ function makeRequest(hostname, path, method = 'GET', headers = {}, data = null) 
       });
     });
 
-    req.on('error', reject);
-    if (data) req.write(JSON.stringify(data));
+    req.on('error', (error) => {
+      console.error(`[ERROR] Request failed to ${hostname}:`, error.message);
+      reject(error);
+    });
+
+    if (data) {
+      req.write(JSON.stringify(data));
+    }
     req.end();
   });
 }
@@ -82,6 +91,7 @@ async function discoverTrendingTopics() {
     },
   ];
 
+  console.log(`✅ Found ${trendingTopics.length} topics`);
   return trendingTopics;
 }
 
@@ -107,6 +117,7 @@ async function addTopicToAirtable(topic) {
       'POST',
       {
         'Authorization': `Bearer ${CONFIG.airtable.token}`,
+        'Content-Type': 'application/json',
       },
       data
     );
@@ -115,11 +126,11 @@ async function addTopicToAirtable(topic) {
       console.log('✅ Topic added to Airtable');
       return response.body.id;
     } else {
-      console.error('❌ Failed to add topic:', response.body);
+      console.error('❌ Failed to add topic:', response.status, response.body);
       return null;
     }
   } catch (error) {
-    console.error('Error adding topic to Airtable:', error.message);
+    console.error('❌ Error adding topic to Airtable:', error.message);
     return null;
   }
 }
@@ -132,17 +143,17 @@ async function generateOutline(topic) {
 
   const userPrompt = `Create a detailed outline for a blog post about: "${topic.title}"
   
-  Target keyword: "${topic.keyword}"
-  Category: ${topic.category}
+Target keyword: "${topic.keyword}"
+Category: ${topic.category}
 
-  Requirements:
-  - Include 5-7 main sections with H2/H3 headings
-  - Make it practical and actionable
-  - Include a brief intro (2-3 sentences)
-  - Add a conclusion
-  - Suggest 2-3 internal link opportunities
-  
-  Format as: H2 heading, followed by 2-3 bullet points for each section.`;
+Requirements:
+- Include 5-7 main sections with H2/H3 headings
+- Make it practical and actionable
+- Include a brief intro (2-3 sentences)
+- Add a conclusion
+- Suggest 2-3 internal link opportunities
+
+Format as: H2 heading, followed by 2-3 bullet points for each section.`;
 
   try {
     const response = await makeRequest(
@@ -152,6 +163,7 @@ async function generateOutline(topic) {
       {
         'x-api-key': CONFIG.claude.apiKey,
         'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
       },
       {
         model: 'claude-opus-4-6',
@@ -161,16 +173,16 @@ async function generateOutline(topic) {
       }
     );
 
-    if (response.status === 200 && response.body.content) {
+    if (response.status === 200 && response.body.content && response.body.content.length > 0) {
       const outline = response.body.content[0].text;
       console.log('✅ Outline generated');
       return outline;
     } else {
-      console.error('❌ Failed to generate outline:', response.body);
+      console.error('❌ Claude API error:', response.status, response.body);
       return null;
     }
   } catch (error) {
-    console.error('Error generating outline:', error.message);
+    console.error('❌ Error generating outline:', error.message);
     return null;
   }
 }
@@ -213,6 +225,7 @@ Requirements:
       {
         'x-api-key': CONFIG.claude.apiKey,
         'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
       },
       {
         model: 'claude-opus-4-6',
@@ -222,16 +235,16 @@ Requirements:
       }
     );
 
-    if (response.status === 200 && response.body.content) {
+    if (response.status === 200 && response.body.content && response.body.content.length > 0) {
       const article = response.body.content[0].text;
       console.log('✅ Article generated');
       return article;
     } else {
-      console.error('❌ Failed to generate article:', response.body);
+      console.error('❌ Claude API error:', response.status, response.body);
       return null;
     }
   } catch (error) {
-    console.error('Error generating article:', error.message);
+    console.error('❌ Error generating article:', error.message);
     return null;
   }
 }
@@ -265,6 +278,7 @@ Respond in JSON format:
       {
         'x-api-key': CONFIG.claude.apiKey,
         'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
       },
       {
         model: 'claude-opus-4-6',
@@ -274,18 +288,26 @@ Respond in JSON format:
       }
     );
 
-    if (response.status === 200 && response.body.content) {
+    if (response.status === 200 && response.body.content && response.body.content.length > 0) {
       const text = response.body.content[0].text;
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        const parsed = JSON.parse(jsonMatch[0]);
+        console.log('✅ SEO meta generated');
+        return parsed;
       }
     }
-    console.error('❌ Failed to generate SEO meta');
-    return { metaTitle: topic.title.substring(0, 60), metaDescription: topic.title.substring(0, 160) };
+    console.log('⚠️  Could not parse SEO meta, using defaults');
+    return { 
+      metaTitle: topic.title.substring(0, 60), 
+      metaDescription: topic.title.substring(0, 160) 
+    };
   } catch (error) {
-    console.error('Error generating SEO meta:', error.message);
-    return { metaTitle: topic.title.substring(0, 60), metaDescription: topic.title.substring(0, 160) };
+    console.error('⚠️  Error generating SEO meta:', error.message);
+    return { 
+      metaTitle: topic.title.substring(0, 60), 
+      metaDescription: topic.title.substring(0, 160) 
+    };
   }
 }
 
@@ -303,26 +325,27 @@ async function getUnsplashImage(query) {
     const response = await makeRequest(
       'api.unsplash.com',
       `/search/photos?${searchParams.toString()}`,
-      'GET'
+      'GET',
+      {}
     );
 
     if (response.status === 200 && response.body.results && response.body.results.length > 0) {
       const image = response.body.results[0];
-      console.log('✅ Image found');
+      console.log('✅ Image found from Unsplash');
       return {
         url: image.urls.regular,
         altText: image.alt_description || query,
         credit: image.user.name,
       };
     }
-    console.log('⚠️  No image found, using placeholder');
+    console.log('⚠️  No Unsplash image found, using placeholder');
     return {
       url: 'https://via.placeholder.com/1200x630?text=' + encodeURIComponent(query),
       altText: query,
       credit: 'Placeholder',
     };
   } catch (error) {
-    console.log('⚠️  Error fetching image, using placeholder');
+    console.log('⚠️  Unsplash error, using placeholder');
     return {
       url: 'https://via.placeholder.com/1200x630?text=' + encodeURIComponent(query),
       altText: query,
@@ -345,7 +368,7 @@ async function addBlogPostToAirtable(topic, article, seoMeta, image) {
       'Word Count': article.split(' ').length,
       'Meta Title': seoMeta.metaTitle,
       'Meta Description': seoMeta.metaDescription,
-      'Content': article,
+      'Content': article.substring(0, 100000), // Airtable has field size limits
       'Featured Image URL': image.url,
     },
   };
@@ -357,6 +380,7 @@ async function addBlogPostToAirtable(topic, article, seoMeta, image) {
       'POST',
       {
         'Authorization': `Bearer ${CONFIG.airtable.token}`,
+        'Content-Type': 'application/json',
       },
       data
     );
@@ -365,29 +389,33 @@ async function addBlogPostToAirtable(topic, article, seoMeta, image) {
       console.log('✅ Blog post added to Airtable');
       return response.body.id;
     } else {
-      console.error('❌ Failed to add blog post:', response.body);
+      console.error('❌ Failed to add blog post:', response.status, response.body);
       return null;
     }
   } catch (error) {
-    console.error('Error adding blog post to Airtable:', error.message);
+    console.error('❌ Error adding blog post:', error.message);
     return null;
   }
 }
 
 // Main automation function
 async function runAutomation() {
-  console.log('🚀 Starting blog automation...');
+  console.log('🚀 Starting blog automation...\n');
   
   try {
     // 1. Discover trending topics
     const topics = await discoverTrendingTopics();
-    console.log(`Found ${topics.length} trending topics`);
+    if (topics.length === 0) throw new Error('No topics found');
 
     // 2. Process first topic
     const topic = topics[0];
+    console.log(`\n📌 Processing topic: ${topic.title}\n`);
     
     // 3. Add to Airtable Topics
-    await addTopicToAirtable(topic);
+    const topicId = await addTopicToAirtable(topic);
+    if (!topicId) {
+      console.warn('⚠️  Could not add topic to Airtable, continuing anyway...');
+    }
 
     // 4. Generate outline
     const outline = await generateOutline(topic);
@@ -407,9 +435,9 @@ async function runAutomation() {
     const postId = await addBlogPostToAirtable(topic, article, seoMeta, image);
     if (!postId) throw new Error('Failed to add post to Airtable');
 
-    console.log('✅ Automation complete!');
+    console.log('\n✅ ✅ ✅ Automation complete! ✅ ✅ ✅\n');
   } catch (error) {
-    console.error('❌ Automation failed:', error.message);
+    console.error('\n❌ Automation failed:', error.message, '\n');
     process.exit(1);
   }
 }
