@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 const https = require('https');
-const http = require('http');
 const { URL } = require('url');
 
 // Configuration from environment variables
@@ -20,11 +19,20 @@ const CONFIG = {
   },
 };
 
-// Utility function to make HTTP requests
-function makeRequest(options, data = null) {
+// Utility function to make HTTPS requests
+function makeRequest(hostname, path, method = 'GET', headers = {}, data = null) {
   return new Promise((resolve, reject) => {
-    const protocol = options.protocol === 'https:' ? https : http;
-    const req = protocol.request(options, (res) => {
+    const options = {
+      hostname,
+      path,
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+      },
+    };
+
+    const req = https.request(options, (res) => {
       let body = '';
       res.on('data', (chunk) => (body += chunk));
       res.on('end', () => {
@@ -43,12 +51,10 @@ function makeRequest(options, data = null) {
   });
 }
 
-// Get trending topics from Google Trends (via web search simulation)
+// Get trending topics
 async function discoverTrendingTopics() {
   console.log('📊 Discovering trending topics...');
   
-  // For now, return predefined trending topics based on your categories
-  // In production, this would integrate with Google Trends API
   const trendingTopics = [
     {
       title: 'Best Spring 2026 Casual Fashion Trends',
@@ -83,18 +89,6 @@ async function discoverTrendingTopics() {
 async function addTopicToAirtable(topic) {
   console.log(`📝 Adding topic to Airtable: ${topic.title}`);
 
-  const url = new URL(`https://api.airtable.com/v0/${CONFIG.airtable.baseId}/Topics`);
-  
-  const options = {
-    hostname: url.hostname,
-    path: url.pathname,
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${CONFIG.airtable.token}`,
-      'Content-Type': 'application/json',
-    },
-  };
-
   const data = {
     fields: {
       'Topic Title': topic.title,
@@ -107,7 +101,16 @@ async function addTopicToAirtable(topic) {
   };
 
   try {
-    const response = await makeRequest(options, data);
+    const response = await makeRequest(
+      'api.airtable.com',
+      `/v0/${CONFIG.airtable.baseId}/Topics`,
+      'POST',
+      {
+        'Authorization': `Bearer ${CONFIG.airtable.token}`,
+      },
+      data
+    );
+
     if (response.status === 201) {
       console.log('✅ Topic added to Airtable');
       return response.body.id;
@@ -116,7 +119,7 @@ async function addTopicToAirtable(topic) {
       return null;
     }
   } catch (error) {
-    console.error('Error adding topic to Airtable:', error);
+    console.error('Error adding topic to Airtable:', error.message);
     return null;
   }
 }
@@ -142,21 +145,21 @@ async function generateOutline(topic) {
   Format as: H2 heading, followed by 2-3 bullet points for each section.`;
 
   try {
-    const response = await makeRequest({
-      hostname: 'api.anthropic.com',
-      path: '/v1/messages',
-      method: 'POST',
-      headers: {
+    const response = await makeRequest(
+      'api.anthropic.com',
+      '/v1/messages',
+      'POST',
+      {
         'x-api-key': CONFIG.claude.apiKey,
         'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
       },
-    }, {
-      model: 'claude-opus-4-6',
-      max_tokens: 1500,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-    });
+      {
+        model: 'claude-opus-4-6',
+        max_tokens: 1500,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      }
+    );
 
     if (response.status === 200 && response.body.content) {
       const outline = response.body.content[0].text;
@@ -167,7 +170,7 @@ async function generateOutline(topic) {
       return null;
     }
   } catch (error) {
-    console.error('Error generating outline:', error);
+    console.error('Error generating outline:', error.message);
     return null;
   }
 }
@@ -203,21 +206,21 @@ Requirements:
 - End with a brief conclusion`;
 
   try {
-    const response = await makeRequest({
-      hostname: 'api.anthropic.com',
-      path: '/v1/messages',
-      method: 'POST',
-      headers: {
+    const response = await makeRequest(
+      'api.anthropic.com',
+      '/v1/messages',
+      'POST',
+      {
         'x-api-key': CONFIG.claude.apiKey,
         'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
       },
-    }, {
-      model: 'claude-opus-4-6',
-      max_tokens: 3000,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-    });
+      {
+        model: 'claude-opus-4-6',
+        max_tokens: 3000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      }
+    );
 
     if (response.status === 200 && response.body.content) {
       const article = response.body.content[0].text;
@@ -228,7 +231,7 @@ Requirements:
       return null;
     }
   } catch (error) {
-    console.error('Error generating article:', error);
+    console.error('Error generating article:', error.message);
     return null;
   }
 }
@@ -255,21 +258,21 @@ Respond in JSON format:
 }`;
 
   try {
-    const response = await makeRequest({
-      hostname: 'api.anthropic.com',
-      path: '/v1/messages',
-      method: 'POST',
-      headers: {
+    const response = await makeRequest(
+      'api.anthropic.com',
+      '/v1/messages',
+      'POST',
+      {
         'x-api-key': CONFIG.claude.apiKey,
         'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
       },
-    }, {
-      model: 'claude-opus-4-6',
-      max_tokens: 300,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-    });
+      {
+        model: 'claude-opus-4-6',
+        max_tokens: 300,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      }
+    );
 
     if (response.status === 200 && response.body.content) {
       const text = response.body.content[0].text;
@@ -281,7 +284,7 @@ Respond in JSON format:
     console.error('❌ Failed to generate SEO meta');
     return { metaTitle: topic.title.substring(0, 60), metaDescription: topic.title.substring(0, 160) };
   } catch (error) {
-    console.error('Error generating SEO meta:', error);
+    console.error('Error generating SEO meta:', error.message);
     return { metaTitle: topic.title.substring(0, 60), metaDescription: topic.title.substring(0, 160) };
   }
 }
@@ -291,16 +294,17 @@ async function getUnsplashImage(query) {
   console.log(`🖼️  Fetching image from Unsplash: ${query}`);
 
   try {
-    const searchUrl = new URL('https://api.unsplash.com/search/photos');
-    searchUrl.searchParams.append('query', query);
-    searchUrl.searchParams.append('per_page', '1');
-    searchUrl.searchParams.append('client_id', process.env.UNSPLASH_API_KEY || 'demo');
-
-    const response = await makeRequest({
-      hostname: searchUrl.hostname,
-      path: searchUrl.pathname + searchUrl.search,
-      method: 'GET',
+    const searchParams = new URLSearchParams({
+      query: query,
+      per_page: '1',
+      client_id: process.env.UNSPLASH_API_KEY || 'demo',
     });
+
+    const response = await makeRequest(
+      'api.unsplash.com',
+      `/search/photos?${searchParams.toString()}`,
+      'GET'
+    );
 
     if (response.status === 200 && response.body.results && response.body.results.length > 0) {
       const image = response.body.results[0];
@@ -331,18 +335,6 @@ async function getUnsplashImage(query) {
 async function addBlogPostToAirtable(topic, article, seoMeta, image) {
   console.log(`📚 Adding blog post to Airtable...`);
 
-  const url = new URL(`https://api.airtable.com/v0/${CONFIG.airtable.baseId}/Blog%20Posts`);
-  
-  const options = {
-    hostname: url.hostname,
-    path: url.pathname,
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${CONFIG.airtable.token}`,
-      'Content-Type': 'application/json',
-    },
-  };
-
   const data = {
     fields: {
       'Post Title': topic.title,
@@ -359,7 +351,16 @@ async function addBlogPostToAirtable(topic, article, seoMeta, image) {
   };
 
   try {
-    const response = await makeRequest(options, data);
+    const response = await makeRequest(
+      'api.airtable.com',
+      `/v0/${CONFIG.airtable.baseId}/Blog%20Posts`,
+      'POST',
+      {
+        'Authorization': `Bearer ${CONFIG.airtable.token}`,
+      },
+      data
+    );
+
     if (response.status === 201) {
       console.log('✅ Blog post added to Airtable');
       return response.body.id;
@@ -368,50 +369,7 @@ async function addBlogPostToAirtable(topic, article, seoMeta, image) {
       return null;
     }
   } catch (error) {
-    console.error('Error adding blog post to Airtable:', error);
-    return null;
-  }
-}
-
-// Publish to WordPress
-async function publishToWordPress(post) {
-  console.log(`📰 Publishing to WordPress...`);
-
-  const auth = Buffer.from(`${CONFIG.wordpress.username}:${CONFIG.wordpress.password}`).toString('base64');
-  
-  const wpContent = `<h2>Introduction</h2><p>${post.Content.substring(0, 100)}...</p>${post.Content}`;
-
-  const options = {
-    hostname: new URL(CONFIG.wordpress.url).hostname,
-    path: '/wp-json/wp/v2/posts',
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${auth}`,
-      'Content-Type': 'application/json',
-    },
-  };
-
-  const data = {
-    title: post['Post Title'],
-    content: wpContent,
-    status: 'publish',
-    meta: {
-      _yoast_wpseo_title: post['Meta Title'],
-      _yoast_wpseo_metadesc: post['Meta Description'],
-    },
-  };
-
-  try {
-    const response = await makeRequest(options, data);
-    if (response.status === 201) {
-      console.log('✅ Published to WordPress');
-      return response.body.id;
-    } else {
-      console.error('❌ Failed to publish to WordPress:', response.body);
-      return null;
-    }
-  } catch (error) {
-    console.error('Error publishing to WordPress:', error);
+    console.error('Error adding blog post to Airtable:', error.message);
     return null;
   }
 }
@@ -448,10 +406,6 @@ async function runAutomation() {
     // 8. Add to Airtable Blog Posts
     const postId = await addBlogPostToAirtable(topic, article, seoMeta, image);
     if (!postId) throw new Error('Failed to add post to Airtable');
-
-    // 9. Publish to WordPress
-    // Uncomment when ready:
-    // const wpPostId = await publishToWordPress({ ...topic, Content: article, ...seoMeta });
 
     console.log('✅ Automation complete!');
   } catch (error) {
