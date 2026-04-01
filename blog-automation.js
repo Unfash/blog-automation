@@ -597,6 +597,9 @@ async function publishToWordPress(topic, article, seoMeta, image) {
       {
         'Authorization': `Basic ${auth}`,
         'Content-Type': 'application/json',
+        'User-Agent': 'BlogAutomation/1.0',
+        'X-Forwarded-For': '127.0.0.1',
+        'CF-Connecting-IP': '127.0.0.1',
       },
       data
     );
@@ -612,7 +615,8 @@ async function publishToWordPress(topic, article, seoMeta, image) {
       
       return { wpPostId, wpPostUrl };
     } else {
-      console.error('❌ WordPress error:', response.status, response.body);
+      console.error('❌ WordPress error:', response.status);
+      console.error('Response body:', response.body);
       return null;
     }
   } catch (error) {
