@@ -1,0 +1,40 @@
+name: Blog Automation
+
+# Run on schedule: Tuesday, Thursday, and Saturday at 9 AM UTC
+on:
+  schedule:
+    - cron: '0 9 * * 2'  # Tuesday 9 AM
+    - cron: '0 9 * * 4'  # Thursday 9 AM
+    - cron: '0 9 * * 6'  # Saturday 9 AM
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  blog-automation:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Run blog automation
+        env:
+          WORDPRESS_URL: ${{ secrets.WORDPRESS_URL }}
+          WORDPRESS_USERNAME: ${{ secrets.WORDPRESS_USERNAME }}
+          WORDPRESS_PASSWORD: ${{ secrets.WORDPRESS_PASSWORD }}
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          UNSPLASH_API_KEY: ${{ secrets.UNSPLASH_API_KEY }}
+        run: npm start
+      
+      - name: Log results
+        if: always()
+        run: echo "Blog automation completed"
