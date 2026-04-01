@@ -173,9 +173,9 @@ async function addTopicToAirtable(topic) {
       data
     );
 
-    if (response.status === 201) {
+    if (response.status === 201 || response.status === 200) {
       console.log('✅ Topic added to Airtable\n');
-      return response.body.id;
+      return response.body.id || response.body.records?.[0]?.id || 'success';
     } else {
       console.error('❌ Airtable error:', response.status, response.body.error);
       return null;
@@ -442,9 +442,9 @@ async function addBlogPostToAirtable(topic, article, seoMeta, image) {
       data
     );
 
-    if (response.status === 201) {
+    if (response.status === 201 || response.status === 200) {
       console.log('✅ Blog post added to Airtable\n');
-      return response.body.id;
+      return response.body.id || response.body.records?.[0]?.id || 'success';
     } else {
       console.error('❌ Airtable error:', response.status, response.body.error);
       return null;
