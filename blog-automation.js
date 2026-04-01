@@ -14,8 +14,8 @@ const CONFIG = {
     token: process.env.AIRTABLE_TOKEN,
     baseId: process.env.AIRTABLE_BASE_ID,
   },
-  claude: {
-    apiKey: process.env.CLAUDE_API_KEY,
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY,
   },
 };
 
@@ -135,7 +135,7 @@ async function addTopicToAirtable(topic) {
   }
 }
 
-// Generate content outline with Claude
+// Generate content outline with ChatGPT
 async function generateOutline(topic) {
   console.log(`📋 Generating outline for: ${topic.title}`);
 
@@ -157,28 +157,30 @@ Format as: H2 heading, followed by 2-3 bullet points for each section.`;
 
   try {
     const response = await makeRequest(
-      'api.anthropic.com',
-      '/v1/messages',
+      'api.openai.com',
+      '/v1/chat/completions',
       'POST',
       {
-        'x-api-key': CONFIG.claude.apiKey,
-        'anthropic-version': '2023-06-01',
+        'Authorization': `Bearer ${CONFIG.openai.apiKey}`,
         'Content-Type': 'application/json',
       },
       {
-        model: 'claude-opus-4-6',
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
         max_tokens: 1500,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
+        temperature: 0.7,
       }
     );
 
-    if (response.status === 200 && response.body.content && response.body.content.length > 0) {
-      const outline = response.body.content[0].text;
+    if (response.status === 200 && response.body.choices && response.body.choices.length > 0) {
+      const outline = response.body.choices[0].message.content;
       console.log('✅ Outline generated');
       return outline;
     } else {
-      console.error('❌ Claude API error:', response.status, response.body);
+      console.error('❌ OpenAI API error:', response.status, response.body);
       return null;
     }
   } catch (error) {
@@ -187,7 +189,7 @@ Format as: H2 heading, followed by 2-3 bullet points for each section.`;
   }
 }
 
-// Generate full article content with Claude
+// Generate full article content with ChatGPT
 async function generateArticle(topic, outline) {
   console.log(`✍️  Generating full article for: ${topic.title}`);
 
@@ -219,28 +221,30 @@ Requirements:
 
   try {
     const response = await makeRequest(
-      'api.anthropic.com',
-      '/v1/messages',
+      'api.openai.com',
+      '/v1/chat/completions',
       'POST',
       {
-        'x-api-key': CONFIG.claude.apiKey,
-        'anthropic-version': '2023-06-01',
+        'Authorization': `Bearer ${CONFIG.openai.apiKey}`,
         'Content-Type': 'application/json',
       },
       {
-        model: 'claude-opus-4-6',
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
         max_tokens: 3000,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
+        temperature: 0.7,
       }
     );
 
-    if (response.status === 200 && response.body.content && response.body.content.length > 0) {
-      const article = response.body.content[0].text;
+    if (response.status === 200 && response.body.choices && response.body.choices.length > 0) {
+      const article = response.body.choices[0].message.content;
       console.log('✅ Article generated');
       return article;
     } else {
-      console.error('❌ Claude API error:', response.status, response.body);
+      console.error('❌ OpenAI API error:', response.status, response.body);
       return null;
     }
   } catch (error) {
@@ -249,7 +253,7 @@ Requirements:
   }
 }
 
-// Generate SEO meta tags with Claude
+// Generate SEO meta tags with ChatGPT
 async function generateSEOMeta(topic, article) {
   console.log(`🔍 Generating SEO meta tags...`);
 
@@ -272,24 +276,26 @@ Respond in JSON format:
 
   try {
     const response = await makeRequest(
-      'api.anthropic.com',
-      '/v1/messages',
+      'api.openai.com',
+      '/v1/chat/completions',
       'POST',
       {
-        'x-api-key': CONFIG.claude.apiKey,
-        'anthropic-version': '2023-06-01',
+        'Authorization': `Bearer ${CONFIG.openai.apiKey}`,
         'Content-Type': 'application/json',
       },
       {
-        model: 'claude-opus-4-6',
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
         max_tokens: 300,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
+        temperature: 0.7,
       }
     );
 
-    if (response.status === 200 && response.body.content && response.body.content.length > 0) {
-      const text = response.body.content[0].text;
+    if (response.status === 200 && response.body.choices && response.body.choices.length > 0) {
+      const text = response.body.choices[0].message.content;
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
@@ -368,7 +374,7 @@ async function addBlogPostToAirtable(topic, article, seoMeta, image) {
       'Word Count': article.split(' ').length,
       'Meta Title': seoMeta.metaTitle,
       'Meta Description': seoMeta.metaDescription,
-      'Content': article.substring(0, 100000), // Airtable has field size limits
+      'Content': article.substring(0, 100000),
       'Featured Image URL': image.url,
     },
   };
@@ -400,7 +406,7 @@ async function addBlogPostToAirtable(topic, article, seoMeta, image) {
 
 // Main automation function
 async function runAutomation() {
-  console.log('🚀 Starting blog automation...\n');
+  console.log('🚀 Starting blog automation with ChatGPT...\n');
   
   try {
     // 1. Discover trending topics
