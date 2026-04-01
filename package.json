@@ -1,0 +1,22 @@
+{
+  "name": "blog-automation",
+  "version": "1.0.0",
+  "description": "Automated blog content creation, publishing, and scheduling for unfashionablemale.co.uk",
+  "main": "blog-automation.js",
+  "scripts": {
+    "start": "node blog-automation.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "blog",
+    "automation",
+    "wordpress",
+    "airtable",
+    "claude"
+  ],
+  "author": "Unfashionable Male",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
