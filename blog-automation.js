@@ -149,6 +149,7 @@ async function discoverTrendingTopics() {
 // Add topic to Airtable
 async function addTopicToAirtable(topic) {
   console.log(`📝 Adding topic to Airtable: ${topic.title}`);
+  console.log(`[DEBUG] Topic data:`, JSON.stringify(topic));
 
   const data = {
     fields: {
@@ -160,6 +161,8 @@ async function addTopicToAirtable(topic) {
       'Trending Score': Math.min(100, Math.floor((topic.searchVolume / 15000) * 100)),
     },
   };
+
+  console.log(`[DEBUG] Airtable payload:`, JSON.stringify(data));
 
   try {
     const response = await makeRequest(
@@ -173,15 +176,20 @@ async function addTopicToAirtable(topic) {
       data
     );
 
+    console.log(`[DEBUG] Airtable response status: ${response.status}`);
+    console.log(`[DEBUG] Airtable response body:`, JSON.stringify(response.body));
+
     if (response.status === 201 || response.status === 200) {
       console.log('✅ Topic added to Airtable\n');
       return response.body.id || response.body.records?.[0]?.id || 'success';
     } else {
-      console.error('❌ Airtable error:', response.status, response.body.error);
+      console.error('❌ Airtable error:', response.status, response.body);
+      console.error('[DEBUG] Full error object:', JSON.stringify(response.body));
       return null;
     }
   } catch (error) {
     console.error('❌ Error adding topic:', error.message);
+    console.error('[DEBUG] Error details:', error);
     return null;
   }
 }
