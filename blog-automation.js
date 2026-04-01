@@ -658,10 +658,14 @@ async function runAutomation() {
     const postId = await addBlogPostToAirtable(topic, article, seoMeta, image);
     if (!postId) throw new Error('Failed to add post to Airtable');
 
-    // 9. PUBLISH TO WORDPRESS
+    // 9. AUTO-PUBLISH TO WORDPRESS (Hybrid Mode)
+    console.log('\n🔄 AUTO-PUBLISHING TO WORDPRESS...\n');
     const wpResult = await publishToWordPress(topic, article, seoMeta, image);
     if (!wpResult) {
       console.warn('⚠️  Post added to Airtable but WordPress publishing failed');
+    } else {
+      console.log('✅ Post automatically published to WordPress');
+      console.log('⚠️  HYBRID MODE: Check the post and unpublish from WordPress if needed\n');
     }
 
     console.log('✅ ✅ ✅ AUTOMATION COMPLETE! ✅ ✅ ✅\n');
