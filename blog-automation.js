@@ -268,7 +268,33 @@ Requirements:
 - Include practical examples and tips
 - Make it SEO-friendly
 - Use HTML formatting for headings and lists
-- End with a brief conclusion`;
+- Target People Also Ask (PAA) questions naturally within sections
+- DO NOT include a "Conclusion" section header
+- DO NOT add meta-commentary or explanatory text at the end
+- DO NOT explain what the post does
+- End the post after the last content section
+
+SEO Enhancements:
+1. Use long-tail keyword questions in H3 headings (e.g., "What are the best spring 2026 casual fashion trends?")
+2. Naturally incorporate keyword variations (2-3 times total, not forced)
+3. Add a "Frequently Asked Questions" section at the end with 4-5 PAA-style questions and answers
+4. Include 2-3 relevant outbound links to authoritative sources (fashion blogs, Wikipedia, major retailers) with natural anchor text
+5. Include internal link suggestions as a simple list before the FAQ section
+6. Add JSON-LD schema markup at the very end for BlogPosting
+
+Schema Markup Format:
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "${topic.title}",
+  "datePublished": "2026-04-01",
+  "author": {
+    "@type": "Person",
+    "name": "Unfashionable Male"
+  }
+}
+</script>`;
 
   try {
     const response = await makeRequest(
@@ -455,6 +481,83 @@ async function addBlogPostToAirtable(topic, article, seoMeta, image) {
   }
 }
 
+// Publish to WordPress
+async function publishToWordPress(topic, article, seoMeta, image) {
+  console.log(`📤 Publishing to WordPress: ${topic.title}`);
+
+  const auth = Buffer.from(
+    `${CONFIG.wordpress.username}:${CONFIG.wordpress.password}`
+  ).toString('base64');
+
+  // Category ID mapping from your WordPress setup
+  const categoryMap = {
+    'Clothing': 1713,
+    'Casual Style': 1714,
+    'Capsule Wardrobe': 1718,
+    'Formalwear': 1716,
+    'Smart Casual': 1715,
+    'Seasonal Wardrobe': 1717,
+    'Style Mistakes': 1719,
+    'Accessories': 1725,
+    'Bags': 1728,
+    'Footwear': 1727,
+    'Glasses & Sunglasses': 1730,
+    'Hats & Caps': 1729,
+    'Watches': 1726,
+    'Grooming': 1720,
+    'Beard & Shaving': 1722,
+    'Fragrance': 1724,
+    'Hair Care & Styles': 1721,
+    'Skincare': 1723,
+    'Lifestyle': 1672,
+    'Travel': 1676,
+    'Life': 1701,
+    'Featured': 16,
+    'Fashion': 1666,
+  };
+
+  const categoryId = categoryMap[topic.category] || 1713;
+
+  const data = {
+    title: topic.title,
+    content: article,
+    excerpt: seoMeta.metaDescription,
+    meta: {
+      _yoast_wpseo_title: seoMeta.metaTitle,
+      _yoast_wpseo_metadesc: seoMeta.metaDescription,
+    },
+    categories: [categoryId],
+    status: 'publish',
+  };
+
+  try {
+    const response = await makeRequest(
+      'unfashionablemale.co.uk',
+      '/wp-json/wp/v2/posts',
+      'POST',
+      {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json',
+      },
+      data
+    );
+
+    if (response.status === 201) {
+      const wpPostId = response.body.id;
+      const wpPostUrl = response.body.link;
+      console.log(`✅ Published to WordPress (ID: ${wpPostId})`);
+      console.log(`📌 URL: ${wpPostUrl}\n`);
+      return { wpPostId, wpPostUrl };
+    } else {
+      console.error('❌ WordPress error:', response.status, response.body);
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ Error publishing to WordPress:', error.message);
+    return null;
+  }
+}
+
 // Main automation function
 async function runAutomation() {
   console.log('🚀 Starting blog automation with ChatGPT...\n');
@@ -491,6 +594,12 @@ async function runAutomation() {
     // 8. Add to Airtable Blog Posts
     const postId = await addBlogPostToAirtable(topic, article, seoMeta, image);
     if (!postId) throw new Error('Failed to add post to Airtable');
+
+    // 9. PUBLISH TO WORDPRESS
+    const wpResult = await publishToWordPress(topic, article, seoMeta, image);
+    if (!wpResult) {
+      console.warn('⚠️  Post added to Airtable but WordPress publishing failed');
+    }
 
     console.log('✅ ✅ ✅ AUTOMATION COMPLETE! ✅ ✅ ✅\n');
   } catch (error) {
