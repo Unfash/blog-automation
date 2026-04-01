@@ -11,13 +11,38 @@ const CONFIG = {
     password: process.env.WORDPRESS_PASSWORD,
   },
   airtable: {
-    token: process.env.AIRTABLE_TOKEN,
-    baseId: process.env.AIRTABLE_BASE_ID,
+    token: process.env.AIRTABLE_TOKEN || '',
+    baseId: process.env.AIRTABLE_BASE_ID || '',
   },
   openai: {
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: process.env.OPENAI_API_KEY || '',
   },
 };
+
+// Validate environment variables
+function validateConfig() {
+  console.log('[VALIDATION] Checking required environment variables...\n');
+  
+  if (!CONFIG.openai.apiKey) {
+    console.error('❌ ERROR: OPENAI_API_KEY is not set');
+    console.error('   Make sure OPENAI_API_KEY is added to GitHub Secrets');
+    process.exit(1);
+  }
+  console.log('✅ OPENAI_API_KEY is set');
+  
+  if (!CONFIG.airtable.token) {
+    console.error('❌ ERROR: AIRTABLE_TOKEN is not set');
+    process.exit(1);
+  }
+  console.log('✅ AIRTABLE_TOKEN is set');
+  
+  if (!CONFIG.airtable.baseId) {
+    console.error('❌ ERROR: AIRTABLE_BASE_ID is not set');
+    process.exit(1);
+  }
+  console.log('✅ AIRTABLE_BASE_ID is set');
+  console.log();
+}
 
 // Utility function to make HTTPS requests with explicit port 443
 function makeRequest(hostname, path, method = 'GET', headers = {}, data = null) {
@@ -33,7 +58,7 @@ function makeRequest(hostname, path, method = 'GET', headers = {}, data = null) 
       },
     };
 
-    console.log(`[DEBUG] Making ${method} request to ${hostname}${path}`);
+    console.log(`[DEBUG] ${method} ${hostname}${path}`);
 
     const req = https.request(options, (res) => {
       let body = '';
@@ -49,7 +74,7 @@ function makeRequest(hostname, path, method = 'GET', headers = {}, data = null) 
     });
 
     req.on('error', (error) => {
-      console.error(`[ERROR] Request failed to ${hostname}:`, error.message);
+      console.error(`[ERROR] ${hostname}: ${error.message}`);
       reject(error);
     });
 
@@ -91,7 +116,7 @@ async function discoverTrendingTopics() {
     },
   ];
 
-  console.log(`✅ Found ${trendingTopics.length} topics`);
+  console.log(`✅ Found ${trendingTopics.length} topics\n`);
   return trendingTopics;
 }
 
@@ -123,14 +148,14 @@ async function addTopicToAirtable(topic) {
     );
 
     if (response.status === 201) {
-      console.log('✅ Topic added to Airtable');
+      console.log('✅ Topic added to Airtable\n');
       return response.body.id;
     } else {
-      console.error('❌ Failed to add topic:', response.status, response.body);
+      console.error('❌ Airtable error:', response.status, response.body.error);
       return null;
     }
   } catch (error) {
-    console.error('❌ Error adding topic to Airtable:', error.message);
+    console.error('❌ Error adding topic:', error.message);
     return null;
   }
 }
@@ -177,10 +202,10 @@ Format as: H2 heading, followed by 2-3 bullet points for each section.`;
 
     if (response.status === 200 && response.body.choices && response.body.choices.length > 0) {
       const outline = response.body.choices[0].message.content;
-      console.log('✅ Outline generated');
+      console.log('✅ Outline generated\n');
       return outline;
     } else {
-      console.error('❌ OpenAI API error:', response.status, response.body);
+      console.error('❌ OpenAI error:', response.status, response.body.error);
       return null;
     }
   } catch (error) {
@@ -241,10 +266,10 @@ Requirements:
 
     if (response.status === 200 && response.body.choices && response.body.choices.length > 0) {
       const article = response.body.choices[0].message.content;
-      console.log('✅ Article generated');
+      console.log('✅ Article generated\n');
       return article;
     } else {
-      console.error('❌ OpenAI API error:', response.status, response.body);
+      console.error('❌ OpenAI error:', response.status, response.body.error);
       return null;
     }
   } catch (error) {
@@ -259,7 +284,7 @@ async function generateSEOMeta(topic, article) {
 
   const systemPrompt = `You are an SEO expert. Generate compelling meta titles and descriptions.`;
 
-  const userPrompt = `Based on this article topic and content, generate SEO meta tags:
+  const userPrompt = `Based on this article topic, generate SEO meta tags:
 
 Title: ${topic.title}
 Keyword: ${topic.keyword}
@@ -268,7 +293,7 @@ Requirements:
 - Meta title: Max 60 characters, include keyword
 - Meta description: Max 160 characters, compelling call-to-action
 
-Respond in JSON format:
+Respond in JSON format only:
 {
   "metaTitle": "...",
   "metaDescription": "..."
@@ -299,11 +324,11 @@ Respond in JSON format:
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        console.log('✅ SEO meta generated');
+        console.log('✅ SEO meta generated\n');
         return parsed;
       }
     }
-    console.log('⚠️  Could not parse SEO meta, using defaults');
+    console.log('⚠️  Could not parse SEO meta, using defaults\n');
     return { 
       metaTitle: topic.title.substring(0, 60), 
       metaDescription: topic.title.substring(0, 160) 
@@ -337,21 +362,21 @@ async function getUnsplashImage(query) {
 
     if (response.status === 200 && response.body.results && response.body.results.length > 0) {
       const image = response.body.results[0];
-      console.log('✅ Image found from Unsplash');
+      console.log('✅ Image found from Unsplash\n');
       return {
         url: image.urls.regular,
         altText: image.alt_description || query,
         credit: image.user.name,
       };
     }
-    console.log('⚠️  No Unsplash image found, using placeholder');
+    console.log('⚠️  No Unsplash image found, using placeholder\n');
     return {
       url: 'https://via.placeholder.com/1200x630?text=' + encodeURIComponent(query),
       altText: query,
       credit: 'Placeholder',
     };
   } catch (error) {
-    console.log('⚠️  Unsplash error, using placeholder');
+    console.log('⚠️  Unsplash error, using placeholder\n');
     return {
       url: 'https://via.placeholder.com/1200x630?text=' + encodeURIComponent(query),
       altText: query,
@@ -392,10 +417,10 @@ async function addBlogPostToAirtable(topic, article, seoMeta, image) {
     );
 
     if (response.status === 201) {
-      console.log('✅ Blog post added to Airtable');
+      console.log('✅ Blog post added to Airtable\n');
       return response.body.id;
     } else {
-      console.error('❌ Failed to add blog post:', response.status, response.body);
+      console.error('❌ Airtable error:', response.status, response.body.error);
       return null;
     }
   } catch (error) {
@@ -408,6 +433,9 @@ async function addBlogPostToAirtable(topic, article, seoMeta, image) {
 async function runAutomation() {
   console.log('🚀 Starting blog automation with ChatGPT...\n');
   
+  // Validate all required credentials
+  validateConfig();
+  
   try {
     // 1. Discover trending topics
     const topics = await discoverTrendingTopics();
@@ -415,13 +443,10 @@ async function runAutomation() {
 
     // 2. Process first topic
     const topic = topics[0];
-    console.log(`\n📌 Processing topic: ${topic.title}\n`);
+    console.log(`📌 Processing topic: ${topic.title}\n`);
     
-    // 3. Add to Airtable Topics
+    // 3. Add to Airtable Topics (non-critical if fails)
     const topicId = await addTopicToAirtable(topic);
-    if (!topicId) {
-      console.warn('⚠️  Could not add topic to Airtable, continuing anyway...');
-    }
 
     // 4. Generate outline
     const outline = await generateOutline(topic);
@@ -441,9 +466,9 @@ async function runAutomation() {
     const postId = await addBlogPostToAirtable(topic, article, seoMeta, image);
     if (!postId) throw new Error('Failed to add post to Airtable');
 
-    console.log('\n✅ ✅ ✅ Automation complete! ✅ ✅ ✅\n');
+    console.log('✅ ✅ ✅ AUTOMATION COMPLETE! ✅ ✅ ✅\n');
   } catch (error) {
-    console.error('\n❌ Automation failed:', error.message, '\n');
+    console.error('\n❌ AUTOMATION FAILED:', error.message, '\n');
     process.exit(1);
   }
 }
