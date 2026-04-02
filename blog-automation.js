@@ -540,6 +540,44 @@ async function addToPublishingSchedule(topic, wpPostId, wpPostUrl) {
   }
 }
 
+// Test WordPress API connectivity
+async function testWordPressAPI() {
+  console.log(`🧪 Testing WordPress API connectivity...\n`);
+
+  const auth = Buffer.from(
+    `${CONFIG.wordpress.username}:${CONFIG.wordpress.password}`
+  ).toString('base64');
+
+  try {
+    const response = await makeRequest(
+      'unfashionablemale.co.uk',
+      '/wp-json/wp/v2/users/me',
+      'GET',
+      {
+        'Authorization': `Basic ${auth}`,
+        'User-Agent': 'BlogAutomation/1.0',
+      }
+    );
+
+    console.log(`[DEBUG] WP API test status: ${response.status}`);
+    console.log(`[DEBUG] WP API test response:`, JSON.stringify(response.body));
+
+    if (response.status === 200) {
+      console.log('✅ WordPress API is accessible\n');
+      return true;
+    } else if (response.status === 401 || response.status === 403) {
+      console.error('❌ Authentication failed (401/403) - check credentials');
+      return false;
+    } else {
+      console.error(`❌ Unexpected status: ${response.status}`);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ WordPress API test failed:', error.message);
+    return false;
+  }
+}
+
 // Publish to WordPress
 async function publishToWordPress(topic, article, seoMeta, image) {
   console.log(`📤 Publishing to WordPress: ${topic.title}`);
@@ -598,8 +636,6 @@ async function publishToWordPress(topic, article, seoMeta, image) {
         'Authorization': `Basic ${auth}`,
         'Content-Type': 'application/json',
         'User-Agent': 'BlogAutomation/1.0',
-        'X-Forwarded-For': '127.0.0.1',
-        'CF-Connecting-IP': '127.0.0.1',
       },
       data
     );
@@ -662,7 +698,16 @@ async function runAutomation() {
     const postId = await addBlogPostToAirtable(topic, article, seoMeta, image);
     if (!postId) throw new Error('Failed to add post to Airtable');
 
-    // 9. AUTO-PUBLISH TO WORDPRESS (Hybrid Mode)
+    // 9. TEST WORDPRESS API FIRST
+    console.log('\n🔍 TESTING WORDPRESS API ACCESS...\n');
+    const apiTestPassed = await testWordPressAPI();
+    
+    if (!apiTestPassed) {
+      console.warn('⚠️  WordPress API test failed - publishing may not work');
+      console.warn('⚠️  Possible causes: Cloudflare DNS/proxy issue or WordPress auth problem\n');
+    }
+
+    // 10. AUTO-PUBLISH TO WORDPRESS (Hybrid Mode)
     console.log('\n🔄 AUTO-PUBLISHING TO WORDPRESS...\n');
     const wpResult = await publishToWordPress(topic, article, seoMeta, image);
     if (!wpResult) {
