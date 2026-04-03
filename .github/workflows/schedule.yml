@@ -9,7 +9,7 @@ on:
     # Wednesday 2:15 PM UTC
     - cron: '15 14 * * 3'
     # Friday 19:230 PM UTC
-    - cron: '45 10 * * 5'
+    - cron: '25 19 * * 5'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
