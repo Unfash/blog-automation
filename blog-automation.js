@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const https = require('https');
+const http = require('http');
 const { URL } = require('url');
 
 // Configuration from environment variables
@@ -82,6 +83,99 @@ function makeRequest(hostname, path, method = 'GET', headers = {}, data = null) 
     }
     req.end();
   });
+}
+
+// Download image from URL
+function downloadImage(imageUrl) {
+  return new Promise((resolve, reject) => {
+    console.log(`[DEBUG] Downloading image from: ${imageUrl}`);
+    
+    const protocol = imageUrl.startsWith('https') ? https : http;
+    
+    protocol.get(imageUrl, (res) => {
+      let data = '';
+      res.setEncoding('binary');
+      
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      
+      res.on('end', () => {
+        resolve(Buffer.from(data, 'binary'));
+      });
+    }).on('error', (error) => {
+      reject(error);
+    });
+  });
+}
+
+// Upload image to WordPress media library
+async function uploadImageToWordPress(imageUrl, postTitle, token) {
+  console.log(`📤 Uploading image to WordPress media library...`);
+
+  try {
+    // Download the image
+    const imageBuffer = await downloadImage(imageUrl);
+    
+    // Extract filename from URL
+    const urlObj = new URL(imageUrl);
+    const filename = urlObj.pathname.split('/').pop() || `${postTitle.replace(/\s+/g, '-')}.jpg`;
+
+    console.log(`[DEBUG] Image downloaded, size: ${imageBuffer.length} bytes`);
+    console.log(`[DEBUG] Filename: ${filename}`);
+
+    // Upload to WordPress
+    const formData = imageBuffer;
+    
+    const uploadOptions = {
+      hostname: 'unfashionablemale.co.uk',
+      port: 443,
+      path: '/wp-json/wp/v2/media',
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'image/jpeg',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': imageBuffer.length,
+        'User-Agent': 'BlogAutomation/1.0',
+      },
+    };
+
+    console.log(`[DEBUG] POST unfashionablemale.co.uk/wp-json/wp/v2/media`);
+
+    const uploadResponse = await new Promise((resolve, reject) => {
+      const req = https.request(uploadOptions, (res) => {
+        let body = '';
+        res.on('data', (chunk) => (body += chunk));
+        res.on('end', () => {
+          try {
+            const parsed = body ? JSON.parse(body) : {};
+            resolve({ status: res.statusCode, body: parsed });
+          } catch (e) {
+            resolve({ status: res.statusCode, body });
+          }
+        });
+      });
+
+      req.on('error', reject);
+      req.write(imageBuffer);
+      req.end();
+    });
+
+    console.log(`[DEBUG] Upload response status: ${uploadResponse.status}`);
+
+    if (uploadResponse.status === 201) {
+      const mediaId = uploadResponse.body.id;
+      console.log(`✅ Image uploaded to WordPress (Media ID: ${mediaId})\n`);
+      return mediaId;
+    } else {
+      console.error('❌ Image upload failed:', uploadResponse.status, uploadResponse.body);
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ Image upload error:', error.message);
+    return null;
+  }
 }
 
 // Get trending topics
@@ -378,12 +472,12 @@ async function fetchImage(query) {
       console.log('✅ Image found from Unsplash\n');
       return imageUrl;
     } else {
-      console.warn('⚠️  No image found, using placeholder');
-      return 'https://via.placeholder.com/1200x600?text=' + encodeURIComponent(query);
+      console.warn('⚠️  No image found');
+      return null;
     }
   } catch (error) {
     console.error('❌ Image fetch failed:', error.message);
-    return 'https://via.placeholder.com/1200x600?text=Blog+Image';
+    return null;
   }
 }
 
@@ -402,7 +496,7 @@ async function addBlogPostToAirtable(topic, article, seoMeta, imageUrl) {
       'Word Count': wordCount,
       'Meta Title': seoMeta.metaTitle || topic.title,
       'Meta Description': seoMeta.metaDescription || `Learn about ${topic.keyword}`,
-      'Content': article.substring(0, 100000), // Limit to 100k chars
+      'Content': article.substring(0, 100000),
       'Featured Image URL': imageUrl,
       'Publishing Date': new Date().toISOString().split('T')[0],
     },
@@ -433,8 +527,8 @@ async function addBlogPostToAirtable(topic, article, seoMeta, imageUrl) {
   }
 }
 
-// Publish to WordPress using JWT
-async function publishToWordPress(topic, article, seoMeta, image, token) {
+// Publish to WordPress using JWT with featured image
+async function publishToWordPress(topic, article, seoMeta, mediaId, token) {
   console.log(`📤 Publishing to WordPress: ${topic.title}`);
 
   const categoryMap = {
@@ -474,7 +568,7 @@ async function publishToWordPress(topic, article, seoMeta, image, token) {
       _yoast_wpseo_metadesc: seoMeta.metaDescription,
     },
     categories: [categoryId],
-    featured_media: 0,
+    featured_media: mediaId || 0,
     status: 'publish',
   };
 
@@ -496,14 +590,6 @@ async function publishToWordPress(topic, article, seoMeta, image, token) {
       const wpPostUrl = response.body.link;
       console.log(`✅ Published to WordPress (ID: ${wpPostId})`);
       console.log(`📌 URL: ${wpPostUrl}\n`);
-      
-      // Try to set featured image if URL is valid
-      if (image && image.startsWith('http')) {
-        console.log(`🖼️  Setting featured image...`);
-        // Note: Setting featured image via URL requires additional setup
-        // For now, just log that it's been published
-      }
-      
       return { wpPostId, wpPostUrl };
     } else {
       console.error('❌ WordPress error:', response.status);
@@ -593,13 +679,19 @@ async function runBlogAutomation() {
 
   // Fetch image
   const imageUrl = await fetchImage(topic.keyword);
+  let mediaId = null;
+
+  // Upload image to WordPress if found
+  if (imageUrl) {
+    mediaId = await uploadImageToWordPress(imageUrl, topic.title, jwtToken);
+  }
 
   // Add to Airtable
   await addBlogPostToAirtable(topic, article, seoMeta, imageUrl);
 
-  // Publish to WordPress
+  // Publish to WordPress with featured image
   console.log('\n🔄 AUTO-PUBLISHING TO WORDPRESS...\n');
-  const wpResult = await publishToWordPress(topic, article, seoMeta, imageUrl, jwtToken);
+  const wpResult = await publishToWordPress(topic, article, seoMeta, mediaId, jwtToken);
   if (wpResult) {
     await addToPublishingSchedule(topic, wpResult.wpPostId, wpResult.wpPostUrl);
   } else {
