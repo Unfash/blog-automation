@@ -1,11 +1,15 @@
 name: Blog Automation
 
-# Run on schedule: Tuesday, Thursday, and Saturday at 9 AM UTC
+# Run on schedule: randomised times 3x per week
+# Monday 7:30 AM UTC, Wednesday 2:15 PM UTC, Friday 10:45 AM UTC
 on:
   schedule:
-    - cron: '0 9 * * 2'  # Tuesday 9 AM
-    - cron: '0 9 * * 4'  # Thursday 9 AM
-    - cron: '0 9 * * 6'  # Saturday 9 AM
+    # Monday 7:30 AM UTC
+    - cron: '30 7 * * 1'
+    # Wednesday 2:15 PM UTC
+    - cron: '15 14 * * 3'
+    # Friday 10:45 AM UTC
+    - cron: '45 10 * * 5'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
