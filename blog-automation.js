@@ -25,7 +25,6 @@ function validateConfig() {
   
   if (!CONFIG.openai.apiKey) {
     console.error('❌ ERROR: OPENAI_API_KEY is not set');
-    console.error('   Make sure OPENAI_API_KEY is added to GitHub Secrets');
     process.exit(1);
   }
   console.log('✅ OPENAI_API_KEY is set');
@@ -44,7 +43,7 @@ function validateConfig() {
   console.log();
 }
 
-// Utility function to make HTTPS requests with explicit port 443
+// Utility function to make HTTPS requests
 function makeRequest(hostname, path, method = 'GET', headers = {}, data = null) {
   return new Promise((resolve, reject) => {
     const options = {
@@ -89,7 +88,6 @@ function makeRequest(hostname, path, method = 'GET', headers = {}, data = null) 
 async function discoverTrendingTopics() {
   console.log('📊 Discovering trending topics...');
   
-  // Actual subcategories from existing posts
   const categories = [
     'Casual Style',
     'Seasonal Wardrobe',
@@ -98,24 +96,12 @@ async function discoverTrendingTopics() {
     'Accessories',
     'Travel',
     'Hats & Caps',
-    'Style Mistakes',
-    'Featured',
-    'Grooming',
-    'Beard & Shaving',
-    'Hair Care & Styles',
-    'Capsule Wardrobe',
-    'Bags',
-    'Watches',
-    'Skincare',
     'Footwear',
-    'Glasses & Sunglasses',
-    'Formalwear',
-    'Fragrance',
-    'Activites',
-    'Life',
+    'Beard & Shaving',
+    'Grooming',
   ];
 
-  const trendingTopics = [
+  const topics = [
     {
       title: 'Best Spring 2026 Casual Fashion Trends',
       category: 'Casual Style',
@@ -123,96 +109,116 @@ async function discoverTrendingTopics() {
       searchVolume: 8900,
     },
     {
-      title: 'How to Care for Leather Shoes in Summer',
-      category: 'Footwear',
-      keyword: 'leather shoe care summer',
-      searchVolume: 3200,
+      title: 'How to Build a Minimalist Capsule Wardrobe',
+      category: 'Capsule Wardrobe',
+      keyword: 'minimalist capsule wardrobe men',
+      searchVolume: 5400,
     },
     {
-      title: 'Beard Growth and Maintenance Guide',
-      category: 'Beard & Shaving',
-      keyword: 'how to grow beard faster',
-      searchVolume: 12000,
+      title: 'Best Sustainable Fashion Brands for Men 2026',
+      category: 'Clothing',
+      keyword: 'sustainable men fashion brands',
+      searchVolume: 4200,
     },
     {
-      title: 'Budget Travel Hacks for Men 2026',
-      category: 'Travel',
-      keyword: 'cheap travel tips men',
-      searchVolume: 5600,
+      title: 'Smart Casual Outfits for Work: Complete Guide',
+      category: 'Smart Casual',
+      keyword: 'smart casual outfits men work',
+      searchVolume: 6800,
     },
   ];
 
-  console.log(`✅ Found ${trendingTopics.length} topics\n`);
-  return trendingTopics;
+  console.log(`✅ Found ${topics.length} topics\n`);
+  return topics;
 }
 
-// Add topic to Airtable
-async function addTopicToAirtable(topic) {
-  console.log(`📝 Adding topic to Airtable: ${topic.title}`);
-  console.log(`[DEBUG] Topic data:`, JSON.stringify(topic));
+// Get JWT token for authentication
+async function getJWTToken() {
+  console.log(`🔑 Requesting JWT token...\n`);
 
   const data = {
-    fields: {
-      'Topic Title': topic.title,
-      'Category': topic.category,
-      'Primary Keyword': topic.keyword,
-      'Search Volume': topic.searchVolume,
-      'Status': 'Discovered',
-      'Trending Score': Math.min(100, Math.floor((topic.searchVolume / 15000) * 100)),
-    },
+    username: CONFIG.wordpress.username,
+    password: CONFIG.wordpress.password,
   };
-
-  console.log(`[DEBUG] Airtable payload:`, JSON.stringify(data));
 
   try {
     const response = await makeRequest(
-      'api.airtable.com',
-      `/v0/${CONFIG.airtable.baseId}/Topics`,
+      'unfashionablemale.co.uk',
+      '/wp-json/jwt-auth/v1/token',
       'POST',
       {
-        'Authorization': `Bearer ${CONFIG.airtable.token}`,
         'Content-Type': 'application/json',
+        'User-Agent': 'BlogAutomation/1.0',
       },
       data
     );
 
-    console.log(`[DEBUG] Airtable response status: ${response.status}`);
-    console.log(`[DEBUG] Airtable response body:`, JSON.stringify(response.body));
+    console.log(`[DEBUG] JWT token request status: ${response.status}`);
 
-    if (response.status === 201 || response.status === 200) {
-      console.log('✅ Topic added to Airtable\n');
-      return response.body.id || response.body.records?.[0]?.id || 'success';
+    if (response.status === 200) {
+      const token = response.body.token;
+      console.log(`✅ JWT token acquired\n`);
+      return token;
     } else {
-      console.error('❌ Airtable error:', response.status, response.body);
-      console.error('[DEBUG] Full error object:', JSON.stringify(response.body));
+      console.error('❌ Failed to get JWT token:', response.status, response.body);
       return null;
     }
   } catch (error) {
-    console.error('❌ Error adding topic:', error.message);
-    console.error('[DEBUG] Error details:', error);
+    console.error('❌ JWT token request failed:', error.message);
     return null;
   }
 }
 
-// Generate content outline with ChatGPT
+// Test WordPress API connectivity with JWT
+async function testWordPressAPI(token) {
+  console.log(`🧪 Testing WordPress API connectivity...\n`);
+
+  try {
+    const response = await makeRequest(
+      'unfashionablemale.co.uk',
+      '/wp-json/wp/v2/users/me',
+      'GET',
+      {
+        'Authorization': `Bearer ${token}`,
+        'User-Agent': 'BlogAutomation/1.0',
+      }
+    );
+
+    console.log(`[DEBUG] WP API test status: ${response.status}`);
+
+    if (response.status === 200) {
+      console.log('✅ WordPress API is accessible\n');
+      return true;
+    } else if (response.status === 401 || response.status === 403) {
+      console.error('❌ Authentication failed (401/403) - JWT token invalid');
+      return false;
+    } else {
+      console.error(`❌ Unexpected status: ${response.status}`);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ WordPress API test failed:', error.message);
+    return false;
+  }
+}
+
+// Generate article outline
 async function generateOutline(topic) {
   console.log(`📋 Generating outline for: ${topic.title}`);
 
-  const systemPrompt = `You are an expert blog writer for a men's fashion and lifestyle blog. Generate a detailed outline for a blog post that is SEO-optimized, engaging, and original.`;
+  const prompt = `Create a detailed blog post outline for: "${topic.title}"
+Keyword: ${topic.keyword}
 
-  const userPrompt = `Create a detailed outline for a blog post about: "${topic.title}"
-  
-Target keyword: "${topic.keyword}"
-Category: ${topic.category}
+Provide:
+1. Blog post title (engaging, SEO-friendly)
+2. Meta description (160 characters max)
+3. Main sections (5-7 sections with H2 headings)
+4. Key points for each section
+5. Internal linking opportunities (suggest 2-3 relevant topics)
+6. Call-to-action ideas
 
-Requirements:
-- Include 5-7 main sections with H2/H3 headings
-- Make it practical and actionable
-- Include a brief intro (2-3 sentences)
-- Add a conclusion
-- Suggest 2-3 internal link opportunities
-
-Format as: H2 heading, followed by 2-3 bullet points for each section.`;
+Focus on UK English spelling and men's fashion/lifestyle content.
+Format as structured JSON.`;
 
   try {
     const response = await makeRequest(
@@ -225,93 +231,47 @@ Format as: H2 heading, followed by 2-3 bullet points for each section.`;
       },
       {
         model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
+        max_tokens: 1000,
       }
     );
 
-    if (response.status === 200 && response.body.choices && response.body.choices.length > 0) {
-      const outline = response.body.choices[0].message.content;
+    if (response.status === 200) {
       console.log('✅ Outline generated\n');
-      return outline;
+      return response.body.choices[0].message.content;
     } else {
-      console.error('❌ OpenAI error:', response.status, response.body.error);
+      console.error('❌ OpenAI error:', response.status, response.body);
       return null;
     }
   } catch (error) {
-    console.error('❌ Error generating outline:', error.message);
+    console.error('❌ Outline generation failed:', error.message);
     return null;
   }
 }
 
-// Generate full article content with ChatGPT
+// Generate full article
 async function generateArticle(topic, outline) {
   console.log(`✍️  Generating full article for: ${topic.title}`);
 
-  const systemPrompt = `You are an expert blog writer for unfashionablemale.co.uk, a men's fashion and lifestyle blog. 
-Write engaging, well-researched, original blog posts that rank well in Google.
-- Use conversational tone
-- Include practical tips and advice
-- Make content actionable and relevant to men
-- Optimize for the target keyword naturally
-- Write 1500-2000 words
-- Use proper HTML formatting with <h2>, <h3>, <p>, <ul>, <li> tags`;
-
-  const userPrompt = `Write a complete blog post based on this outline:
-
-Topic: ${topic.title}
-Target keyword: ${topic.keyword}
-Category: ${topic.category}
-
-OUTLINE:
+  const prompt = `Write a comprehensive blog post based on this outline:
 ${outline}
 
-CRITICAL REQUIREMENTS:
-- Output ONLY pure HTML (no markdown code fences like \`\`\`html)
-- Use UK English spelling and grammar throughout (colour, organise, realise, etc.)
-- Expand each outline section into 2-3 paragraphs
-- Write 1500-2000 words total
-- Include practical examples and tips
-- Make it SEO-friendly
-- Use HTML formatting for headings and lists
-- Target People Also Ask (PAA) questions naturally within sections
-- DO NOT include a "Conclusion" section header
-- DO NOT add meta-commentary or explanatory text at the end
-- DO NOT explain what the post does
-- End the post after the last content section
+Requirements:
+- 1500-2000 words
+- UK English spelling and grammar (colour, organise, etc.)
+- H2 and H3 headings for structure
+- Long-tail keywords naturally throughout
+- 2-3 outbound links to authoritative sources
+- FAQ section at end with 4-5 questions
+- NO "Conclusion" section
+- Output ONLY pure HTML (no markdown)
+- Include JSON-LD schema markup at end
+- Target for Rank Math SEO
 
-STRUCTURED DATA (use ONLY when relevant):
-- Use <ul> or <ol> lists when presenting multiple options, steps, or items
-- Use <table> with <thead>, <tbody>, <tr>, <td> ONLY when comparing features, prices, or data
-- Use <strong> and <em> for emphasis on key terms
-- Avoid forcing tables or lists where prose is more natural
-
-SEO Enhancements:
-1. Use long-tail keyword questions in H3 headings (e.g., "What are the best spring 2026 casual fashion trends?")
-2. Naturally incorporate keyword variations (2-3 times total, not forced)
-3. Add a "Frequently Asked Questions" section at the end with 4-5 PAA-style questions and answers
-4. Include 2-3 relevant outbound links to authoritative sources (fashion blogs, Wikipedia, major retailers) with natural anchor text
-5. Include internal link suggestions as a simple list before the FAQ section
-6. Add JSON-LD schema markup at the very end for BlogPosting
-7. When using lists or tables, add schema markup for them (use proper HTML structure for accessibility)
-
-Schema Markup Format:
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BlogPosting",
-  "headline": "${topic.title}",
-  "datePublished": "2026-04-01",
-  "author": {
-    "@type": "Person",
-    "name": "Unfashionable Male"
-  }
-}
-</script>`;
+Topic: ${topic.title}
+Primary keyword: ${topic.keyword}
+Category: ${topic.category}`;
 
   try {
     const response = await makeRequest(
@@ -324,48 +284,39 @@ Schema Markup Format:
       },
       {
         model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        max_tokens: 3000,
+        messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
+        max_tokens: 2500,
       }
     );
 
-    if (response.status === 200 && response.body.choices && response.body.choices.length > 0) {
-      const article = response.body.choices[0].message.content;
+    if (response.status === 200) {
       console.log('✅ Article generated\n');
-      return article;
+      return response.body.choices[0].message.content;
     } else {
-      console.error('❌ OpenAI error:', response.status, response.body.error);
+      console.error('❌ OpenAI error:', response.status, response.body);
       return null;
     }
   } catch (error) {
-    console.error('❌ Error generating article:', error.message);
+    console.error('❌ Article generation failed:', error.message);
     return null;
   }
 }
 
-// Generate SEO meta tags with ChatGPT
+// Generate SEO meta tags
 async function generateSEOMeta(topic, article) {
   console.log(`🔍 Generating SEO meta tags...`);
 
-  const systemPrompt = `You are an SEO expert. Generate compelling meta titles and descriptions.`;
-
-  const userPrompt = `Based on this article topic, generate SEO meta tags:
-
+  const prompt = `Create SEO meta tags for this article:
 Title: ${topic.title}
 Keyword: ${topic.keyword}
 
-Requirements:
-- Meta title: Max 60 characters, include keyword
-- Meta description: Max 160 characters, compelling call-to-action
-
-Respond in JSON format only:
+Return ONLY valid JSON with these fields:
 {
-  "metaTitle": "...",
-  "metaDescription": "..."
+  "metaTitle": "SEO title (60 chars max)",
+  "metaDescription": "SEO description (160 chars max)",
+  "focusKeyword": "main keyword",
+  "relatedKeywords": ["keyword1", "keyword2", "keyword3"]
 }`;
 
   try {
@@ -379,97 +330,77 @@ Respond in JSON format only:
       },
       {
         model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        max_tokens: 300,
-        temperature: 0.7,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.5,
+        max_tokens: 500,
       }
     );
 
-    if (response.status === 200 && response.body.choices && response.body.choices.length > 0) {
-      const text = response.body.choices[0].message.content;
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        console.log('✅ SEO meta generated\n');
-        return parsed;
+    if (response.status === 200) {
+      console.log('✅ SEO meta generated\n');
+      const content = response.body.choices[0].message.content;
+      try {
+        return JSON.parse(content);
+      } catch (e) {
+        return {
+          metaTitle: topic.title.substring(0, 60),
+          metaDescription: `Learn about ${topic.keyword} - comprehensive guide for men`,
+          focusKeyword: topic.keyword,
+          relatedKeywords: [topic.keyword],
+        };
       }
+    } else {
+      console.error('❌ OpenAI error:', response.status);
+      return null;
     }
-    console.log('⚠️  Could not parse SEO meta, using defaults\n');
-    return { 
-      metaTitle: topic.title.substring(0, 60), 
-      metaDescription: topic.title.substring(0, 160) 
-    };
   } catch (error) {
-    console.error('⚠️  Error generating SEO meta:', error.message);
-    return { 
-      metaTitle: topic.title.substring(0, 60), 
-      metaDescription: topic.title.substring(0, 160) 
-    };
+    console.error('❌ SEO generation failed:', error.message);
+    return null;
   }
 }
 
-// Get featured image from Unsplash
-async function getUnsplashImage(query) {
+// Fetch image from Unsplash
+async function fetchImage(query) {
   console.log(`🖼️  Fetching image from Unsplash: ${query}`);
 
   try {
-    const searchParams = new URLSearchParams({
-      query: query,
-      per_page: '1',
-      client_id: process.env.UNSPLASH_API_KEY || 'demo',
-    });
-
     const response = await makeRequest(
       'api.unsplash.com',
-      `/search/photos?${searchParams.toString()}`,
-      'GET',
-      {}
+      `/search/photos?query=${encodeURIComponent(query)}&per_page=1&client_id=${process.env.UNSPLASH_API_KEY}`,
+      'GET'
     );
 
     if (response.status === 200 && response.body.results && response.body.results.length > 0) {
-      const image = response.body.results[0];
+      const imageUrl = response.body.results[0].urls.regular;
       console.log('✅ Image found from Unsplash\n');
-      return {
-        url: image.urls.regular,
-        altText: image.alt_description || query,
-        credit: image.user.name,
-      };
+      return imageUrl;
+    } else {
+      console.warn('⚠️  No image found, using placeholder');
+      return 'https://via.placeholder.com/1200x600?text=' + encodeURIComponent(query);
     }
-    console.log('⚠️  No Unsplash image found, using placeholder\n');
-    return {
-      url: 'https://via.placeholder.com/1200x630?text=' + encodeURIComponent(query),
-      altText: query,
-      credit: 'Placeholder',
-    };
   } catch (error) {
-    console.log('⚠️  Unsplash error, using placeholder\n');
-    return {
-      url: 'https://via.placeholder.com/1200x630?text=' + encodeURIComponent(query),
-      altText: query,
-      credit: 'Placeholder',
-    };
+    console.error('❌ Image fetch failed:', error.message);
+    return 'https://via.placeholder.com/1200x600?text=Blog+Image';
   }
 }
 
 // Add blog post to Airtable
-async function addBlogPostToAirtable(topic, article, seoMeta, image) {
+async function addBlogPostToAirtable(topic, article, seoMeta, imageUrl) {
   console.log(`📚 Adding blog post to Airtable...`);
 
   const data = {
     fields: {
       'Post Title': topic.title,
-      'Topic': topic.title,
+      'Topic': [topic.title],
       'Category': topic.category,
       'Primary Keyword': topic.keyword,
       'Status': 'Ready to Publish',
-      'Word Count': article.split(' ').length,
+      'Word Count': Math.floor(article.length / 4.7),
       'Meta Title': seoMeta.metaTitle,
       'Meta Description': seoMeta.metaDescription,
-      'Content': article.substring(0, 100000),
-      'Featured Image URL': image.url,
+      'Content': article,
+      'Featured Image URL': imageUrl,
+      'Publishing Date': new Date().toISOString().split('T')[0],
     },
   };
 
@@ -487,106 +418,21 @@ async function addBlogPostToAirtable(topic, article, seoMeta, image) {
 
     if (response.status === 201 || response.status === 200) {
       console.log('✅ Blog post added to Airtable\n');
-      return response.body.id || response.body.records?.[0]?.id || 'success';
+      return response.body.id || response.body.records?.[0]?.id;
     } else {
-      console.error('❌ Airtable error:', response.status, response.body.error);
+      console.error('❌ Airtable error:', response.status, response.body);
       return null;
     }
   } catch (error) {
-    console.error('❌ Error adding blog post:', error.message);
+    console.error('❌ Error adding to Airtable:', error.message);
     return null;
   }
 }
 
-// Add post to Publishing Schedule table
-async function addToPublishingSchedule(topic, wpPostId, wpPostUrl) {
-  console.log(`📅 Logging to Publishing Schedule...`);
-
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-
-  const data = {
-    fields: {
-      'Publication Date': today,
-      'Post Title': topic.title,
-      'Status': 'Published',
-      'WordPress Post ID': wpPostId,
-      'Published URL': wpPostUrl,
-      'Notes': 'Auto-published by automation',
-    },
-  };
-
-  try {
-    const response = await makeRequest(
-      'api.airtable.com',
-      `/v0/${CONFIG.airtable.baseId}/Publishing%20Schedule`,
-      'POST',
-      {
-        'Authorization': `Bearer ${CONFIG.airtable.token}`,
-        'Content-Type': 'application/json',
-      },
-      data
-    );
-
-    if (response.status === 201 || response.status === 200) {
-      console.log('✅ Added to Publishing Schedule\n');
-      return true;
-    } else {
-      console.error('❌ Error adding to Publishing Schedule:', response.status, response.body.error);
-      return false;
-    }
-  } catch (error) {
-    console.error('❌ Error logging to Publishing Schedule:', error.message);
-    return false;
-  }
-}
-
-// Test WordPress API connectivity
-async function testWordPressAPI() {
-  console.log(`🧪 Testing WordPress API connectivity...\n`);
-
-  const auth = Buffer.from(
-    `${CONFIG.wordpress.username}:${CONFIG.wordpress.password}`
-  ).toString('base64');
-
-  try {
-    const response = await makeRequest(
-      'unfashionablemale.co.uk',
-      '/wp-json/wp/v2/users/me',
-      'GET',
-      {
-        'Authorization': `Basic ${auth}`,
-        'User-Agent': 'BlogAutomation/1.0',
-      }
-    );
-
-    console.log(`[DEBUG] WP API test status: ${response.status}`);
-    console.log(`[DEBUG] WP API test response:`, JSON.stringify(response.body));
-
-    if (response.status === 200) {
-      console.log('✅ WordPress API is accessible\n');
-      return true;
-    } else if (response.status === 401 || response.status === 403) {
-      console.error('❌ Authentication failed (401/403) - check credentials');
-      return false;
-    } else {
-      console.error(`❌ Unexpected status: ${response.status}`);
-      return false;
-    }
-  } catch (error) {
-    console.error('❌ WordPress API test failed:', error.message);
-    return false;
-  }
-}
-
-// Publish to WordPress
-async function publishToWordPress(topic, article, seoMeta, image) {
+// Publish to WordPress using JWT
+async function publishToWordPress(topic, article, seoMeta, image, token) {
   console.log(`📤 Publishing to WordPress: ${topic.title}`);
 
-  const auth = Buffer.from(
-    `${CONFIG.wordpress.username}:${CONFIG.wordpress.password}`
-  ).toString('base64');
-
-  // Category ID mapping from your WordPress setup
   const categoryMap = {
     'Clothing': 1713,
     'Casual Style': 1714,
@@ -633,7 +479,7 @@ async function publishToWordPress(topic, article, seoMeta, image) {
       '/wp-json/wp/v2/posts',
       'POST',
       {
-        'Authorization': `Basic ${auth}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         'User-Agent': 'BlogAutomation/1.0',
       },
@@ -645,10 +491,6 @@ async function publishToWordPress(topic, article, seoMeta, image) {
       const wpPostUrl = response.body.link;
       console.log(`✅ Published to WordPress (ID: ${wpPostId})`);
       console.log(`📌 URL: ${wpPostUrl}\n`);
-      
-      // Log to Publishing Schedule
-      await addToPublishingSchedule(topic, wpPostId, wpPostUrl);
-      
       return { wpPostId, wpPostUrl };
     } else {
       console.error('❌ WordPress error:', response.status);
@@ -661,72 +503,101 @@ async function publishToWordPress(topic, article, seoMeta, image) {
   }
 }
 
-// Main automation function
-async function runAutomation() {
-  console.log('🚀 Starting blog automation with ChatGPT...\n');
-  
-  // Validate all required credentials
-  validateConfig();
-  
+// Add to Publishing Schedule
+async function addToPublishingSchedule(topic, wpPostId, wpPostUrl) {
+  console.log(`📅 Logging to Publishing Schedule...`);
+
+  const data = {
+    fields: {
+      'Publication Date': new Date().toISOString().split('T')[0],
+      'Post Title': topic.title,
+      'Status': 'Published',
+      'WordPress Post ID': wpPostId,
+      'Published URL': wpPostUrl,
+    },
+  };
+
   try {
-    // 1. Discover trending topics
-    const topics = await discoverTrendingTopics();
-    if (topics.length === 0) throw new Error('No topics found');
-
-    // 2. Process first topic
-    const topic = topics[0];
-    console.log(`📌 Processing topic: ${topic.title}\n`);
-    
-    // 3. Add to Airtable Topics (non-critical if fails)
-    const topicId = await addTopicToAirtable(topic);
-
-    // 4. Generate outline
-    const outline = await generateOutline(topic);
-    if (!outline) throw new Error('Failed to generate outline');
-
-    // 5. Generate full article
-    const article = await generateArticle(topic, outline);
-    if (!article) throw new Error('Failed to generate article');
-
-    // 6. Generate SEO meta
-    const seoMeta = await generateSEOMeta(topic, article);
-
-    // 7. Get featured image
-    const image = await getUnsplashImage(topic.keyword);
-
-    // 8. Add to Airtable Blog Posts
-    const postId = await addBlogPostToAirtable(topic, article, seoMeta, image);
-    if (!postId) throw new Error('Failed to add post to Airtable');
-
-    // 9. TEST WORDPRESS API FIRST
-    console.log('\n🔍 TESTING WORDPRESS API ACCESS...\n');
-    const apiTestPassed = await testWordPressAPI();
-    
-    if (!apiTestPassed) {
-      console.warn('⚠️  WordPress API test failed - publishing may not work');
-      console.warn('⚠️  Possible causes: Cloudflare DNS/proxy issue or WordPress auth problem\n');
-    }
-
-    // 10. AUTO-PUBLISH TO WORDPRESS (Hybrid Mode)
-    console.log('\n🔄 AUTO-PUBLISHING TO WORDPRESS...\n');
-    const wpResult = await publishToWordPress(topic, article, seoMeta, image);
-    if (!wpResult) {
-      console.warn('⚠️  Post added to Airtable but WordPress publishing failed');
-    } else {
-      console.log('✅ Post automatically published to WordPress');
-      console.log('⚠️  HYBRID MODE: Check the post and unpublish from WordPress if needed\n');
-    }
-
-    console.log('✅ ✅ ✅ AUTOMATION COMPLETE! ✅ ✅ ✅\n');
+    await makeRequest(
+      'api.airtable.com',
+      `/v0/${CONFIG.airtable.baseId}/Publishing%20Schedule`,
+      'POST',
+      {
+        'Authorization': `Bearer ${CONFIG.airtable.token}`,
+        'Content-Type': 'application/json',
+      },
+      data
+    );
+    console.log('✅ Added to Publishing Schedule\n');
   } catch (error) {
-    console.error('\n❌ AUTOMATION FAILED:', error.message, '\n');
-    process.exit(1);
+    console.warn('⚠️  Could not log to Publishing Schedule:', error.message);
   }
 }
 
-// Run if called directly
-if (require.main === module) {
-  runAutomation();
+// Main automation function
+async function runBlogAutomation() {
+  console.log('🚀 Starting blog automation with ChatGPT...\n');
+
+  validateConfig();
+
+  // Get JWT token
+  const jwtToken = await getJWTToken();
+  if (!jwtToken) {
+    console.error('❌ Could not obtain JWT token - aborting');
+    process.exit(1);
+  }
+
+  // Test API
+  console.log('\n🔍 TESTING WORDPRESS API ACCESS...\n');
+  const apiTestPassed = await testWordPressAPI(jwtToken);
+  if (!apiTestPassed) {
+    console.warn('⚠️  WordPress API test failed - publishing may not work\n');
+  }
+
+  // Discover topics
+  const topics = await discoverTrendingTopics();
+
+  // Process first topic
+  const topic = topics[0];
+  console.log(`📌 Processing topic: ${topic.title}\n`);
+
+  // Generate outline
+  const outline = await generateOutline(topic);
+  if (!outline) {
+    console.error('❌ Failed to generate outline');
+    process.exit(1);
+  }
+
+  // Generate article
+  const article = await generateArticle(topic, outline);
+  if (!article) {
+    console.error('❌ Failed to generate article');
+    process.exit(1);
+  }
+
+  // Generate SEO meta
+  const seoMeta = await generateSEOMeta(topic, article);
+
+  // Fetch image
+  const imageUrl = await fetchImage(topic.keyword);
+
+  // Add to Airtable
+  await addBlogPostToAirtable(topic, article, seoMeta, imageUrl);
+
+  // Publish to WordPress
+  console.log('\n🔄 AUTO-PUBLISHING TO WORDPRESS...\n');
+  const wpResult = await publishToWordPress(topic, article, seoMeta, imageUrl, jwtToken);
+  if (wpResult) {
+    await addToPublishingSchedule(topic, wpResult.wpPostId, wpResult.wpPostUrl);
+  } else {
+    console.warn('⚠️  Post added to Airtable but WordPress publishing failed');
+  }
+
+  console.log('✅ ✅ ✅ AUTOMATION COMPLETE! ✅ ✅ ✅\n');
 }
 
-module.exports = { runAutomation };
+// Run the automation
+runBlogAutomation().catch((error) => {
+  console.error('Fatal error:', error);
+  process.exit(1);
+});
