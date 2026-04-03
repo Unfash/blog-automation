@@ -376,6 +376,15 @@ Requirements:
 - Include JSON-LD schema markup at end
 - Target for Rank Math SEO
 
+CRITICAL FORMATTING:
+- Do NOT use &nbsp; entities
+- Do NOT add empty lines between tags
+- Start with 1-2 paragraphs of intro content (NO H1 or H2 headers)
+- After intro paragraphs, use normal H2 and H3 headers for rest of sections
+- Use clean, minimal HTML
+- Paragraph tags only where needed
+- No excessive spacing
+
 Topic: ${topic.title}
 Primary keyword: ${topic.keyword}
 Category: ${topic.category}`;
@@ -402,6 +411,10 @@ Category: ${topic.category}`;
       let content = response.body.choices[0].message.content;
       // Remove markdown code fences if present
       content = content.replace(/^```html\n?/i, '').replace(/\n?```$/i, '').trim();
+      // Remove &nbsp; entities
+      content = content.replace(/&nbsp;/g, ' ');
+      // Remove extra whitespace between tags
+      content = content.replace(/>\s+</g, '><').trim();
       return content;
     } else {
       console.error('❌ OpenAI error:', response.status, response.body);
