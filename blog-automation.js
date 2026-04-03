@@ -239,7 +239,7 @@ async function discoverTrendingTopics() {
     
     // GROOMING
     'Beard & Shaving': ['beard care tips', 'beard grooming guide', 'shaving routine mens', 'beard style ideas', 'facial hair care'],
-    'Fragrance': ['mens fragrance guide', 'best mens cologne', 'cologne selection tips', 'fragrance for men', 'perfume mens 2026'],
+    'Fragrance': ['mens fragrance guide', 'best mens cologne', 'cologne selection tips', 'fragrance for men', 'perfume selection mens'],
     'Hair Care & Styles': ['mens hair care', 'hair style guide', 'haircut styles mens', 'hair product reviews', 'hairstyle ideas mens'],
     'Skincare': ['mens skincare routine', 'face care for men', 'skincare products mens', 'grooming skincare', 'skin care tips'],
     
