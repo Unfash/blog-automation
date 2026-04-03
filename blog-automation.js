@@ -548,12 +548,15 @@ CONTENT STYLE:
 CRITICAL FORMATTING:
 - Do NOT use &nbsp; entities
 - Do NOT add empty lines between tags
+- Do NOT include <style> tags or CSS
+- Do NOT include <br /> tags
 - Start with 1-2 paragraphs of intro content (NO H1 or H2 headers)
 - After intro paragraphs, use normal H2 and H3 headers for rest of sections
-- Use clean, minimal HTML
+- Use clean, minimal HTML only
 - Paragraph tags only where needed
 - No excessive spacing
 - NO placeholder links to example.com or generic URLs
+- ONLY use: <p>, <h2>, <h3>, <a>, <strong>, <em>, <ul>, <li> tags
 
 Topic: ${topic.title}
 Primary keyword: ${topic.keyword}
@@ -582,10 +585,16 @@ Audience: Everyday men aged 25-55 who want to dress well without fuss`;
       let content = response.body.choices[0].message.content;
       // Remove markdown code fences if present
       content = content.replace(/^```html\n?/i, '').replace(/\n?```$/i, '').trim();
+      // Remove <style> tags and content
+      content = content.replace(/<style[\s\S]*?<\/style>/gi, '');
       // Remove &nbsp; entities
       content = content.replace(/&nbsp;/g, ' ');
+      // Remove <br /> tags
+      content = content.replace(/<br\s*\/?>/gi, '');
       // Remove extra whitespace between tags
       content = content.replace(/>\s+</g, '><').trim();
+      // Remove leading/trailing whitespace
+      content = content.trim();
       return content;
     } else {
       console.error('❌ OpenAI error:', response.status, response.body);
