@@ -738,27 +738,82 @@ async function publishToWordPress(topic, article, seoMeta, mediaId, token) {
   console.log(`📤 Publishing to WordPress: ${topic.title}`);
 
   const categoryMap = {
+    // BODY TYPE & FIT
+    'Body Type & Fit': 1731,
+    'Dressing for Slim Build': 1732,
+    'Dressing for Athletic Build': 1733,
+    'Dressing for Plus Size': 1734,
+    'Dressing for Short Men': 1735,
+    'Dressing for Tall Men': 1736,
+    
+    // OCCASIONS & EVENTS
+    'Occasions & Events': 1737,
+    'Job Interview Outfits': 1738,
+    'First Date Outfit': 1739,
+    'Wedding Guest Outfit': 1740,
+    'Casual Friday': 1741,
+    'Smart Casual for Work': 1742,
+    'Weekend Casual': 1743,
+    
+    // BUDGET & VALUE
+    'Budget & Value': 1744,
+    'Budget Fashion': 1745,
+    'High Street Brands': 1746,
+    'Designer Dupes': 1747,
+    'Affordable Accessories': 1748,
+    
+    // COLOR & COMBINATIONS
+    'Color & Combinations': 1749,
+    'Color Matching Guide': 1750,
+    'Neutral Colors': 1751,
+    'Pattern Mixing': 1752,
+    'Monochrome Styling': 1753,
+    
+    // CLOTHING
     'Clothing': 1713,
     'Casual Style': 1714,
     'Capsule Wardrobe': 1718,
     'Formalwear': 1716,
     'Smart Casual': 1715,
-    'Seasonal Wardrobe': 1717,
     'Style Mistakes': 1719,
+    
+    // SEASONAL WARDROBE
+    'Seasonal Wardrobe': 1717,
+    'Summer Style': 1754,
+    'Spring Transitions': 1756,
+    'Autumn Fashion': 1757,
+    'Winter Layering': 1755,
+    
+    // GROOMING
+    'Grooming': 1720,
+    'Beard & Shaving': 1722,
+    'Fragrance': 1724,
+    'Hair Care & Styles': 1721,
+    'Skincare': 1723,
+    
+    // ACCESSORIES
     'Accessories': 1725,
     'Bags': 1728,
     'Footwear': 1727,
     'Glasses & Sunglasses': 1730,
     'Hats & Caps': 1729,
     'Watches': 1726,
-    'Grooming': 1720,
-    'Beard & Shaving': 1722,
-    'Fragrance': 1724,
-    'Hair Care & Styles': 1721,
-    'Skincare': 1723,
+    
+    // LIFESTYLE ACTIVITIES
+    'Lifestyle Activities': 1758,
+    'Gym & Fitness Style': 1759,
+    'Travel Packing': 1760,
+    'Office Style': 1761,
+    'Casual Weekend': 1762,
+    'Night Out': 1763,
+    
+    // LIFESTYLE (Parent)
     'Lifestyle': 1672,
     'Travel': 1676,
     'Life': 1701,
+    'Activites': 1707,
+    
+    // OTHER
     'Featured': 16,
     'Fashion': 1666,
   };
