@@ -193,50 +193,197 @@ async function uploadImageToWordPress(imageUrl, postTitle, token) {
 
 // Get trending topics
 async function discoverTrendingTopics() {
-  console.log('📊 Discovering trending topics...');
+  console.log('📊 Researching trending topics via ChatGPT...');
+
+  // COMPREHENSIVE keyword database - ALL 50+ categories
+  const keywordDatabase = {
+    // BODY TYPE & FIT
+    'Dressing for Slim Build': ['slim build fashion', 'clothing for slim men', 'slim frame style tips', 'how to dress slim', 'slim guy fashion guide'],
+    'Dressing for Athletic Build': ['athletic build mens fashion', 'muscular build clothing', 'gym body style tips', 'athletic guy outfit ideas', 'fit man fashion'],
+    'Dressing for Plus Size': ['plus size mens fashion', 'big and tall style', 'plus size menswear', 'larger frame clothing', 'plus size guy tips'],
+    'Dressing for Short Men': ['short men fashion tips', 'short guy clothing style', 'height challenged fashion', 'short men outfit ideas', 'short stature styling'],
+    'Dressing for Tall Men': ['tall man fashion guide', 'tall guy clothing tips', 'tall frame style', 'height advantage fashion', 'long torso outfit'],
+    
+    // OCCASIONS & EVENTS
+    'Job Interview Outfits': ['job interview outfit men', 'interview attire mens', 'first impression outfit', 'interview style guide', 'professional interview look'],
+    'First Date Outfit': ['first date outfit men', 'what to wear first date', 'dating outfit ideas', 'first date style tips', 'impressing on first date'],
+    'Wedding Guest Outfit': ['wedding guest outfit men', 'mens wedding attire', 'suit for wedding', 'wedding style guide', 'guest outfit ideas'],
+    'Casual Friday': ['casual friday mens outfit', 'casual friday style', 'office casual tips', 'business casual outfit', 'friday work wear'],
+    'Smart Casual for Work': ['smart casual work outfit', 'office smart casual', 'work style guide', 'professional casual mens', 'office outfit ideas'],
+    'Weekend Casual': ['weekend casual outfit men', 'casual weekend style', 'relaxed outfit ideas', 'weekend fashion mens', 'casual guy look'],
+    
+    // BUDGET & VALUE
+    'Budget Fashion': ['affordable mens fashion brands', 'budget mens clothing', 'cheap quality menswear', 'budget style tips', 'affordable outfit ideas'],
+    'High Street Brands': ['high street mens brands', 'high street fashion men', 'accessible mens fashion', 'high street style', 'mainstream mens brands'],
+    'Designer Dupes': ['designer dupes mens', 'affordable designer alternatives', 'luxury look budget price', 'fake designer look', 'budget luxury style'],
+    'Affordable Accessories': ['affordable mens accessories', 'cheap accessory quality', 'budget friendly accessories', 'affordable watch mens', 'cheap bag mens'],
+    
+    // COLOR & COMBINATIONS
+    'Color Matching Guide': ['color matching guide men', 'how to match colors', 'color coordination mens', 'matching outfit colors', 'color theory fashion'],
+    'Neutral Colors': ['neutral colors menswear', 'neutral palette style', 'neutral outfit ideas', 'neutral mens fashion', 'earthy tone clothing'],
+    'Pattern Mixing': ['pattern mixing guide', 'how to mix patterns', 'pattern combination mens', 'mixing patterns outfit', 'pattern coordination'],
+    'Monochrome Styling': ['monochrome styling men', 'monochrome outfit ideas', 'one color outfit', 'monochrome fashion mens', 'single color styling'],
+    
+    // CLOTHING
+    'Casual Style': ['casual mens fashion', 'casual outfit ideas', 'casual style guide', 'everyday casual wear', 'relaxed style mens'],
+    'Capsule Wardrobe': ['capsule wardrobe mens', 'minimalist mens wardrobe', 'essential clothing items', 'versatile wardrobe mens', 'wardrobe basics'],
+    'Formalwear': ['formal mens clothing', 'formal outfit guide', 'black tie dress code', 'formal style mens', 'occasion dressing'],
+    'Smart Casual': ['smart casual mens fashion', 'smart casual style', 'business casual outfit', 'smart casual look', 'dressed up casual'],
+    'Style Mistakes': ['common style mistakes men', 'fashion faux pas mens', 'what not to wear', 'fashion mistakes mens', 'styling errors'],
+    
+    // SEASONAL
+    'Summer Style': ['summer mens fashion', 'summer outfit ideas', 'hot weather clothing', 'summer style guide', 'warm weather mens fashion'],
+    'Spring Transitions': ['spring transition outfits', 'spring fashion mens', 'spring style tips', 'spring wardrobe ideas', 'layering spring'],
+    'Autumn Fashion': ['autumn mens fashion', 'fall outfit ideas', 'autumn style guide', 'fall fashion mens', 'seasonal change clothing'],
+    'Winter Layering': ['winter layering guide', 'winter outfit ideas', 'cold weather style', 'layering techniques', 'winter mens fashion'],
+    
+    // GROOMING
+    'Beard & Shaving': ['beard care tips', 'beard grooming guide', 'shaving routine mens', 'beard style ideas', 'facial hair care'],
+    'Fragrance': ['mens fragrance guide', 'best mens cologne', 'cologne selection tips', 'fragrance for men', 'perfume mens 2026'],
+    'Hair Care & Styles': ['mens hair care', 'hair style guide', 'haircut styles mens', 'hair product reviews', 'hairstyle ideas mens'],
+    'Skincare': ['mens skincare routine', 'face care for men', 'skincare products mens', 'grooming skincare', 'skin care tips'],
+    
+    // ACCESSORIES
+    'Bags': ['mens bags style', 'best mens bags', 'bag selection guide', 'mens backpack fashion', 'carry bag mens'],
+    'Footwear': ['mens shoes style guide', 'shoe selection tips', 'footwear ideas mens', 'shoe care tips', 'shoe fashion mens'],
+    'Glasses & Sunglasses': ['mens glasses style', 'sunglasses for men', 'eyewear fashion', 'glasses style guide', 'frame selection mens'],
+    'Hats & Caps': ['mens hat styles', 'cap fashion tips', 'hat selection guide', 'hat style ideas', 'headwear for men'],
+    'Watches': ['mens watches guide', 'watch style tips', 'watch selection', 'luxury watch mens', 'watch fashion'],
+    
+    // LIFESTYLE ACTIVITIES
+    'Gym & Fitness Style': ['gym outfit mens', 'fitness wear style', 'gym fashion tips', 'workout clothing', 'athletic wear mens'],
+    'Travel Packing': ['travel packing mens', 'packing tips for trips', 'travel wardrobe ideas', 'luggage packing guide', 'travel outfit ideas'],
+    'Office Style': ['office style guide', 'work outfit ideas', 'professional style mens', 'office wear tips', 'workplace fashion'],
+    'Casual Weekend': ['weekend casual outfit', 'casual weekend style', 'relax outfit ideas', 'weekend fashion', 'casual vibe clothing'],
+    'Night Out': ['night out outfit men', 'going out style', 'evening outfit ideas', 'night wear mens', 'social outfit mens'],
+    
+    // PARENT CATEGORIES
+    'Clothing': ['mens clothing guide', 'wardrobe basics', 'clothing essentials', 'outfit building', 'mens fashion'],
+    'Accessories': ['mens accessories guide', 'accessory selection', 'complete your outfit', 'accessories style', 'finishing touches'],
+    'Grooming': ['grooming tips men', 'personal grooming', 'mens grooming essentials', 'grooming routine', 'self care mens'],
+    'Lifestyle': ['lifestyle fashion', 'everyday living style', 'lifestyle tips', 'life and fashion', 'lifestyle guide'],
+    'Travel': ['travel style guide', 'traveling tips', 'destination outfit', 'travel fashion', 'packing style'],
+    'Life': ['life and style', 'everyday life fashion', 'lifestyle balance', 'life philosophy', 'day to day style'],
+    'Lifestyle Activities': ['activity wear style', 'event outfit ideas', 'occasion dressing', 'activity fashion', 'lifestyle activities']
+  };
+
+  // Pick 3 random different categories
+  const categoryKeys = Object.keys(keywordDatabase);
+  const selectedCategories = [];
+  const selectedKeywords = [];
   
-  const categories = [
-    'Casual Style',
-    'Seasonal Wardrobe',
-    'Clothing',
-    'Smart Casual',
-    'Accessories',
-    'Travel',
-    'Hats & Caps',
-    'Footwear',
-    'Beard & Shaving',
-    'Grooming',
-  ];
+  while (selectedCategories.length < 3 && categoryKeys.length > 0) {
+    const randomIndex = Math.floor(Math.random() * categoryKeys.length);
+    const randomCat = categoryKeys[randomIndex];
+    
+    if (!selectedCategories.includes(randomCat)) {
+      selectedCategories.push(randomCat);
+      const keywords = keywordDatabase[randomCat];
+      const randomKeyword = keywords[Math.floor(Math.random() * keywords.length)];
+      selectedKeywords.push(`${randomCat}: ${randomKeyword}`);
+    }
+  }
 
-  const topics = [
+  const prompt = `You are a men's fashion trend analyst. Create 3 DIVERSE blog topics for April 2026 targeting everyday men aged 25-55.
+
+Use these specific categories/keywords as YOUR INSPIRATION (be creative with topics - don't copy exact titles):
+1. ${selectedKeywords[0]}
+2. ${selectedKeywords[1]}
+3. ${selectedKeywords[2]}
+
+For EACH topic, provide:
+1. Topic title (compelling, SEO-friendly, action-oriented)
+2. Category (MUST be: ${selectedCategories.join(' OR ')})
+3. Primary keyword (what men actually search for, long-tail)
+4. Estimated search volume (realistic: 4000-15000)
+5. Trending score (1-100)
+
+Requirements:
+- Topics MUST be DIFFERENT and NEVER repetitive
+- Focus on practical, actionable advice (Unfashionable Male brand - honest, no-nonsense)
+- Each topic from DIFFERENT category
+- High search volume keywords
+- Real, valuable content for everyday men
+
+RESPOND ONLY WITH VALID JSON (no markdown, no code blocks):
+[
+  {"title": "...", "category": "...", "keyword": "...", "searchVolume": 8500, "trendingScore": 85},
+  {"title": "...", "category": "...", "keyword": "...", "searchVolume": 7200, "trendingScore": 78},
+  {"title": "...", "category": "...", "keyword": "...", "searchVolume": 6500, "trendingScore": 82}
+]`;
+
+  try {
+    const response = await makeRequest(
+      'api.openai.com',
+      '/v1/chat/completions',
+      'POST',
+      {
+        'Authorization': `Bearer ${CONFIG.openai.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      {
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.8,
+        max_tokens: 1200,
+      }
+    );
+
+    if (response.status === 200) {
+      let content = response.body.choices[0].message.content.trim();
+      
+      // Extract JSON from response (handle markdown code blocks)
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        console.warn('⚠️  Could not extract JSON, using fallback topics');
+        return getFallbackTopics();
+      }
+      
+      const topics = JSON.parse(jsonMatch[0]);
+      
+      // Validate topics
+      if (!Array.isArray(topics) || topics.length < 3) {
+        console.warn('⚠️  Invalid topics format, using fallback');
+        return getFallbackTopics();
+      }
+      
+      console.log(`✅ Found 3 trending topics via research\n`);
+      return topics.slice(0, 3); // Return only top 3
+    } else {
+      console.error('❌ OpenAI error:', response.status);
+      return getFallbackTopics();
+    }
+  } catch (error) {
+    console.error('❌ Topic discovery failed:', error.message);
+    return getFallbackTopics();
+  }
+}
+
+// Fallback topics if ChatGPT research fails
+function getFallbackTopics() {
+  return [
     {
-      title: 'Best Spring 2026 Casual Fashion Trends',
-      category: 'Casual Style',
-      keyword: 'spring fashion trends 2026',
+      title: 'Smart Casual Work Outfits: 5 Office Looks That Actually Work',
+      category: 'Smart Casual for Work',
+      keyword: 'smart casual work outfits men',
       searchVolume: 8900,
+      trendingScore: 87
     },
     {
-      title: 'How to Build a Minimalist Capsule Wardrobe',
-      category: 'Capsule Wardrobe',
-      keyword: 'minimalist capsule wardrobe men',
-      searchVolume: 5400,
+      title: 'Best Affordable Menswear Brands Under £50 in 2026',
+      category: 'Budget Fashion',
+      keyword: 'affordable mens fashion brands UK',
+      searchVolume: 9200,
+      trendingScore: 85
     },
     {
-      title: 'Best Sustainable Fashion Brands for Men 2026',
-      category: 'Clothing',
-      keyword: 'sustainable men fashion brands',
-      searchVolume: 4200,
-    },
-    {
-      title: 'Smart Casual Outfits for Work: Complete Guide',
-      category: 'Smart Casual',
-      keyword: 'smart casual outfits men work',
-      searchVolume: 6800,
-    },
+      title: 'Dressing for Your Body Type: The Tall Man\'s Guide',
+      category: 'Dressing for Tall Men',
+      keyword: 'tall man fashion tips clothing',
+      searchVolume: 6500,
+      trendingScore: 78
+    }
   ];
-
-  console.log(`✅ Found ${topics.length} topics\n`);
-  return topics;
 }
 
 // Get JWT token for authentication
