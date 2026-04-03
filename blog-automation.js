@@ -361,7 +361,11 @@ Format as structured JSON.`;
 async function generateArticle(topic, outline) {
   console.log(`✍️  Generating full article for: ${topic.title}`);
 
-  const prompt = `Write a comprehensive blog post based on this outline:
+  const prompt = `Write a comprehensive blog post for "Unfashionable Male" - a practical style guide for everyday men.
+
+Blog Brand: Straightforward, honest, no-nonsense style advice. No pretentious fashion talk. Real-life clothing for real budgets.
+
+Based on this outline:
 ${outline}
 
 Requirements:
@@ -376,6 +380,24 @@ Requirements:
 - Include JSON-LD schema markup at end
 - Target for Rank Math SEO
 
+TONE & VOICE:
+- Conversational and friendly (like talking to a mate)
+- Practical and honest - no pretentious fashion jargon
+- Relatable to everyday men with real budgets
+- Confident but not arrogant
+- Focus on confidence building, not designer labels
+- Use simple language - explain WHY something works, not just that it does
+- Include practical tips readers can actually use
+- Be encouraging - make style feel accessible, not intimidating
+
+CONTENT STYLE:
+- Start with a relatable problem or situation
+- Explain the solution in plain English
+- Include practical examples and real-world scenarios
+- Mention budget-friendly options when relevant
+- Avoid fashion clichés and overused phrases
+- Be honest about what works and what doesn't
+
 CRITICAL FORMATTING:
 - Do NOT use &nbsp; entities
 - Do NOT add empty lines between tags
@@ -388,7 +410,8 @@ CRITICAL FORMATTING:
 
 Topic: ${topic.title}
 Primary keyword: ${topic.keyword}
-Category: ${topic.category}`;
+Category: ${topic.category}
+Audience: Everyday men aged 25-55 who want to dress well without fuss`;
 
   try {
     const response = await makeRequest(
