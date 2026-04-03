@@ -1,16 +1,17 @@
 name: Blog Automation
 
-# Run on schedule: randomised times 3x per week
-# Monday 7:30 AM UTC, Wednesday 2:15 PM UTC, Friday 19:45 PM UTC
 on:
   schedule:
-    # Monday 7:30 AM UTC
+    # Monday 7:30 AM UTC (8:30 AM UK)
     - cron: '30 7 * * 1'
-    # Wednesday 2:15 PM UTC
+    
+    # Wednesday 2:15 PM UTC (3:15 PM UK)
     - cron: '15 14 * * 3'
-    # Friday 19:45 PM UTC
-    - cron: '45 19 * * 5'
-  workflow_dispatch:  # Allow manual trigger
+    
+    # Friday 21:05 UK time (20:05 UTC)
+    - cron: '5 20 * * 5'
+
+  workflow_dispatch:
 
 jobs:
   blog-automation:
@@ -18,10 +19,10 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
       
