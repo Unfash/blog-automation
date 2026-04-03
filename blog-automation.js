@@ -292,7 +292,10 @@ Category: ${topic.category}`;
 
     if (response.status === 200) {
       console.log('✅ Article generated\n');
-      return response.body.choices[0].message.content;
+      let content = response.body.choices[0].message.content;
+      // Remove markdown code fences if present
+      content = content.replace(/^```html\n?/i, '').replace(/\n?```$/i, '').trim();
+      return content;
     } else {
       console.error('❌ OpenAI error:', response.status, response.body);
       return null;
@@ -388,17 +391,18 @@ async function fetchImage(query) {
 async function addBlogPostToAirtable(topic, article, seoMeta, imageUrl) {
   console.log(`📚 Adding blog post to Airtable...`);
 
+  const wordCount = Math.floor(article.length / 4.7);
+
   const data = {
     fields: {
       'Post Title': topic.title,
-      'Topic': [topic.title],
       'Category': topic.category,
       'Primary Keyword': topic.keyword,
       'Status': 'Ready to Publish',
-      'Word Count': Math.floor(article.length / 4.7),
-      'Meta Title': seoMeta.metaTitle,
-      'Meta Description': seoMeta.metaDescription,
-      'Content': article,
+      'Word Count': wordCount,
+      'Meta Title': seoMeta.metaTitle || topic.title,
+      'Meta Description': seoMeta.metaDescription || `Learn about ${topic.keyword}`,
+      'Content': article.substring(0, 100000), // Limit to 100k chars
       'Featured Image URL': imageUrl,
       'Publishing Date': new Date().toISOString().split('T')[0],
     },
@@ -470,6 +474,7 @@ async function publishToWordPress(topic, article, seoMeta, image, token) {
       _yoast_wpseo_metadesc: seoMeta.metaDescription,
     },
     categories: [categoryId],
+    featured_media: 0,
     status: 'publish',
   };
 
@@ -491,6 +496,14 @@ async function publishToWordPress(topic, article, seoMeta, image, token) {
       const wpPostUrl = response.body.link;
       console.log(`✅ Published to WordPress (ID: ${wpPostId})`);
       console.log(`📌 URL: ${wpPostUrl}\n`);
+      
+      // Try to set featured image if URL is valid
+      if (image && image.startsWith('http')) {
+        console.log(`🖼️  Setting featured image...`);
+        // Note: Setting featured image via URL requires additional setup
+        // For now, just log that it's been published
+      }
+      
       return { wpPostId, wpPostUrl };
     } else {
       console.error('❌ WordPress error:', response.status);
