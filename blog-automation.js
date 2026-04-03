@@ -335,55 +335,28 @@ RESPOND ONLY WITH VALID JSON (no markdown, no code blocks):
       // Extract JSON from response (handle markdown code blocks)
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
-        console.warn('⚠️  Could not extract JSON, using fallback topics');
-        return getFallbackTopics();
+        console.error('❌ Could not extract JSON from ChatGPT response');
+        throw new Error('Invalid JSON response from ChatGPT');
       }
       
       const topics = JSON.parse(jsonMatch[0]);
       
       // Validate topics
       if (!Array.isArray(topics) || topics.length < 3) {
-        console.warn('⚠️  Invalid topics format, using fallback');
-        return getFallbackTopics();
+        console.error('❌ Invalid topics format - expected 3 topics');
+        throw new Error('ChatGPT did not return 3 valid topics');
       }
       
       console.log(`✅ Found 3 trending topics via research\n`);
       return topics.slice(0, 3); // Return only top 3
     } else {
       console.error('❌ OpenAI error:', response.status);
-      return getFallbackTopics();
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
   } catch (error) {
     console.error('❌ Topic discovery failed:', error.message);
-    return getFallbackTopics();
+    throw error;
   }
-}
-
-// Fallback topics if ChatGPT research fails
-function getFallbackTopics() {
-  return [
-    {
-      title: 'Smart Casual Work Outfits: 5 Office Looks That Actually Work',
-      category: 'Smart Casual for Work',
-      keyword: 'smart casual work outfits men',
-      searchVolume: 8900,
-      trendingScore: 87
-    },
-    {
-      title: 'Best Affordable Menswear Brands Under £50 in 2026',
-      category: 'Budget Fashion',
-      keyword: 'affordable mens fashion brands UK',
-      searchVolume: 9200,
-      trendingScore: 85
-    },
-    {
-      title: 'Dressing for Your Body Type: The Tall Man\'s Guide',
-      category: 'Dressing for Tall Men',
-      keyword: 'tall man fashion tips clothing',
-      searchVolume: 6500,
-      trendingScore: 78
-    }
-  ];
 }
 
 // Get JWT token for authentication
