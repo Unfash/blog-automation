@@ -369,7 +369,7 @@ Requirements:
 - UK English spelling and grammar (colour, organise, etc.)
 - H2 and H3 headings for structure
 - Long-tail keywords naturally throughout
-- 2-3 outbound links to authoritative sources
+- NO external links - do not include placeholder links like example.com
 - FAQ section at end with 4-5 questions
 - NO "Conclusion" section
 - Output ONLY pure HTML (no markdown)
@@ -384,6 +384,7 @@ CRITICAL FORMATTING:
 - Use clean, minimal HTML
 - Paragraph tags only where needed
 - No excessive spacing
+- NO placeholder links to example.com or generic URLs
 
 Topic: ${topic.title}
 Primary keyword: ${topic.keyword}
