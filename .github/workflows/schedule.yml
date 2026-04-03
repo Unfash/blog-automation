@@ -8,8 +8,8 @@ on:
     - cron: '30 7 * * 1'
     # Wednesday 2:15 PM UTC
     - cron: '15 14 * * 3'
-    # Friday 19:230 PM UTC
-    - cron: '25 19 * * 5'
+    # Friday 20:35 PM UTC
+    - cron: '35 20 * * 5'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
