@@ -1,7 +1,7 @@
 name: Blog Automation
 
 # Run on schedule: randomised times 3x per week
-# Monday 7:30 AM UTC, Wednesday 2:15 PM UTC, Friday 19:30 PM UTC
+# Monday 7:30 AM UTC, Wednesday 2:15 PM UTC, Friday 20:35 PM UTC
 on:
   schedule:
     # Monday 7:30 AM UTC
