@@ -117,16 +117,29 @@ async function uploadImageToWordPress(imageUrl, postTitle, token) {
     // Download the image
     const imageBuffer = await downloadImage(imageUrl);
     
-    // Extract filename from URL
-    const urlObj = new URL(imageUrl);
-    const filename = urlObj.pathname.split('/').pop() || `${postTitle.replace(/\s+/g, '-')}.jpg`;
+    // Determine file extension and MIME type
+    let extension = 'jpg';
+    let mimeType = 'image/jpeg';
+    
+    if (imageUrl.includes('.png')) {
+      extension = 'png';
+      mimeType = 'image/png';
+    } else if (imageUrl.includes('.webp')) {
+      extension = 'webp';
+      mimeType = 'image/webp';
+    } else if (imageUrl.includes('.gif')) {
+      extension = 'gif';
+      mimeType = 'image/gif';
+    }
+    
+    // Create filename with proper extension
+    const filename = `${postTitle.replace(/\s+/g, '-').toLowerCase()}.${extension}`;
 
     console.log(`[DEBUG] Image downloaded, size: ${imageBuffer.length} bytes`);
     console.log(`[DEBUG] Filename: ${filename}`);
+    console.log(`[DEBUG] MIME type: ${mimeType}`);
 
     // Upload to WordPress
-    const formData = imageBuffer;
-    
     const uploadOptions = {
       hostname: 'unfashionablemale.co.uk',
       port: 443,
@@ -134,7 +147,7 @@ async function uploadImageToWordPress(imageUrl, postTitle, token) {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'image/jpeg',
+        'Content-Type': mimeType,
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Content-Length': imageBuffer.length,
         'User-Agent': 'BlogAutomation/1.0',
@@ -463,7 +476,7 @@ async function fetchImage(query) {
   try {
     const response = await makeRequest(
       'api.unsplash.com',
-      `/search/photos?query=${encodeURIComponent(query)}&per_page=1&client_id=${process.env.UNSPLASH_API_KEY}`,
+      `/search/photos?query=${encodeURIComponent(query)}&orientation=landscape&per_page=1&client_id=${process.env.UNSPLASH_API_KEY}`,
       'GET'
     );
 
